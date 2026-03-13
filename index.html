@@ -722,7 +722,8 @@ async function handleOcrImage(event) {
       document.getElementById('ocr-loading').style.display = 'none';
       document.getElementById('ocr-upload-area').style.display = 'block';
       document.getElementById('ocr-preview').style.display = 'none';
-      showToast('⚠ 読み取りに失敗しました。もう一度お試しください', 'warn');
+      showToast('⚠ エラー: ' + (err.message || JSON.stringify(err)), 'warn');
+      console.error('OCR Error:', err);
     }
   };
   reader.readAsDataURL(file);
