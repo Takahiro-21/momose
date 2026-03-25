@@ -102,6 +102,36 @@
     border-radius:8px;padding:10px 14px;border:1px solid var(--border);margin-bottom:10px;}
   .vendor-fixed{font-size:11px;color:var(--muted);}
 
+  /* ── CALENDAR ── */
+  .cal-wrap{background:var(--surface);border-radius:12px;padding:16px;border:1px solid var(--border);margin-bottom:20px;}
+  .cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .cal-title{font-weight:800;font-size:17px;}
+  .cal-nav{background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:6px 14px;font-size:16px;font-family:inherit;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+  .cal-dow{text-align:center;font-size:11px;font-weight:700;color:var(--muted);padding:4px 0;}
+  .cal-dow.sun{color:#ff6b6b;} .cal-dow.sat{color:#4d9fff;}
+  .cal-cell{min-height:72px;border-radius:8px;border:1px solid var(--border);background:var(--high);
+    display:flex;flex-direction:column;align-items:stretch;gap:0;
+    cursor:pointer;transition:all .15s;position:relative;padding:4px 5px;overflow:hidden;}
+  .cal-cell:hover{border-color:var(--blue);background:#1e1e2e;}
+  .cal-cell.today{border-color:var(--red);background:rgba(255,77,109,.12);}
+  .cal-cell.selected{border-color:var(--blue);background:rgba(77,159,255,.18);}
+  .cal-cell.other-month{opacity:.3;pointer-events:none;}
+  .cal-cell.sun-cell .cal-day{color:#ff6b6b;}
+  .cal-cell.sat-cell .cal-day{color:#4d9fff;}
+  .cal-day{font-size:13px;font-weight:800;line-height:1.2;margin-bottom:2px;}
+  .cal-chip{font-size:9px;font-weight:700;border-radius:3px;padding:1px 4px;
+    color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    margin-bottom:1px;max-width:100%;display:block;}
+  .cal-more{font-size:9px;color:var(--muted);font-weight:700;margin-top:1px;}
+
+  /* ── DAY DETAIL ── */
+  .day-detail{background:var(--surface);border-radius:12px;padding:20px;border:1px solid var(--border);}
+  .day-detail-header{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;}
+  .day-detail-title{font-weight:800;font-size:18px;}
+  .day-detail-close{margin-left:auto;background:transparent;border:1px solid var(--border);
+    color:var(--muted);border-radius:8px;padding:6px 14px;font-family:inherit;font-size:14px;}
+
   /* ── TOAST ── */
   #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
     border-radius:10px;padding:12px 28px;color:#fff;font-weight:700;font-size:15px;
@@ -126,22 +156,17 @@
 <main>
   <!-- ダッシュボード -->
   <div id="view-dashboard" class="view active">
-    <div id="section-today" class="section" style="border-top:4px solid var(--red)">
-      <div class="section-header">
-        <h2 class="section-title" style="color:var(--red)">🔴 今日の受取</h2>
-        <span class="section-date" id="today-label"></span>
-        <span class="count-chip" id="today-chip" style="background:var(--red)">0件</span>
+    <!-- カレンダー -->
+    <div class="cal-wrap">
+      <div class="cal-header">
+        <button class="cal-nav" onclick="calPrev()">‹</button>
+        <span class="cal-title" id="cal-title"></span>
+        <button class="cal-nav" onclick="calNext()">›</button>
       </div>
-      <div id="today-cards"></div>
+      <div class="cal-grid" id="cal-grid"></div>
     </div>
-    <div id="section-tomorrow" class="section" style="border-top:4px solid var(--yellow)">
-      <div class="section-header">
-        <h2 class="section-title" style="color:var(--yellow)">🟡 明日の受取</h2>
-        <span class="section-date" id="tomorrow-label"></span>
-        <span class="count-chip" id="tomorrow-chip" style="background:var(--yellow)">0件</span>
-      </div>
-      <div id="tomorrow-cards"></div>
-    </div>
+    <!-- 選択日の詳細 -->
+    <div id="day-detail-wrap"></div>
   </div>
 
   <!-- 写真読み取りモーダル -->
@@ -265,8 +290,8 @@
     <div class="form-wrap">
       <p class="form-title">⚙️ 設定</p>
       <div style="margin-bottom:20px;">
-        <label>📷 Gemini APIキー（写真読み取り用）</label>
-        <input id="s-apikey" class="inp" type="password" placeholder="AIzaSy..." style="margin-top:6px;">
+        <label>📷 Claude APIキー（写真読み取り用）</label>
+        <input id="s-apikey" class="inp" type="password" placeholder="sk-ant-api03-..." style="margin-top:6px;">
         <p style="font-size:12px;color:var(--muted);margin-top:6px;">キーはこの端末のみに保存されます。外部には送信されません。</p>
       </div>
       <div class="btn-row">
@@ -333,21 +358,124 @@ function goto(v) {
 // ══════════════════════════════
 // ダッシュボード
 // ══════════════════════════════
+// カレンダー状態
+let calYear  = new Date().getFullYear();
+let calMonth = new Date().getMonth(); // 0-11
+let selectedDate = todayStr();
+
+function calPrev() { calMonth--; if(calMonth<0){calMonth=11;calYear--;} renderDashboard(); }
+function calNext() { calMonth++; if(calMonth>11){calMonth=0;calYear++;} renderDashboard(); }
+
 function renderDashboard() {
-  const td = todayStr(), tm = tomorrowStr();
-  document.getElementById('today-label').textContent = fmtFull(td);
-  document.getElementById('tomorrow-label').textContent = fmtFull(tm);
-
-  const tOrd = orders.filter(o=>o.pickupDate===td);
-  const mOrd = orders.filter(o=>o.pickupDate===tm);
-
-  renderCards('today-cards', 'today-chip', tOrd, 'var(--red)');
-  renderCards('tomorrow-cards', 'tomorrow-chip', mOrd, 'var(--yellow)');
-
-  const total = [...tOrd,...mOrd].filter(o=>!isDone(o)).length;
+  renderCalendar();
+  renderDayDetail(selectedDate);
+  // バッジ更新
+  const total = orders.filter(o=>!isDone(o)).length;
   const badge = document.getElementById('alertBadge');
   document.getElementById('alertCount').textContent = total;
   badge.style.display = total > 0 ? 'block' : 'none';
+}
+
+function renderCalendar() {
+  const td = todayStr();
+  const y = calYear, m = calMonth;
+  document.getElementById('cal-title').textContent = `${y}年${m+1}月`;
+
+  const firstDay = new Date(y, m, 1).getDay(); // 0=日
+  const lastDate = new Date(y, m+1, 0).getDate();
+
+  const DOWS = ['日','月','火','水','木','金','土'];
+  let html = DOWS.map((d,i)=>`<div class="cal-dow ${i===0?'sun':i===6?'sat':''}">${d}</div>`).join('');
+
+  // 前月の空白
+  for(let i=0; i<firstDay; i++){
+    const prevLast = new Date(y, m, 0).getDate();
+    const d = prevLast - firstDay + i + 1;
+    html += `<div class="cal-cell other-month"><span class="cal-day">${d}</span></div>`;
+  }
+
+  for(let d=1; d<=lastDate; d++){
+    const ds = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const ord = orders.filter(o=>o.pickupDate===ds);
+    const pending = ord.filter(o=>!isDone(o));
+    const done = ord.filter(o=>isDone(o));
+    const isToday = ds===td;
+    const isSel = ds===selectedDate;
+    const dow = new Date(y,m,d).getDay();
+    const isSun = dow===0, isSat = dow===6;
+
+    // セル内プレビュー（最大2件表示）
+    const maxShow = 2;
+    let chips = '';
+    const showOrd = [...pending, ...done].slice(0, maxShow);
+    showOrd.forEach(o => {
+      const bg = isDone(o) ? '#27ae60' : 'var(--red)';
+      const name = o.customerName.length > 4 ? o.customerName.slice(0,4)+'…' : o.customerName;
+      const content = o.repairContent.replace(/\n/g,' ');
+      const short = content.length > 6 ? content.slice(0,6)+'…' : content;
+      chips += `<span class="cal-chip" style="background:${bg}">${name} ${short}</span>`;
+    });
+    const extra = ord.length > maxShow ? `<span class="cal-more">+${ord.length - maxShow}件</span>` : '';
+
+    html += `<div class="cal-cell ${isToday?'today':''} ${isSel?'selected':''} ${isSun?'sun-cell':''} ${isSat?'sat-cell':''}"
+      onclick="selectDate('${ds}')">
+      <span class="cal-day">${d}</span>
+      ${chips}${extra}
+    </div>`;
+  }
+
+  // 次月の空白
+  const total = firstDay + lastDate;
+  const remain = total % 7 === 0 ? 0 : 7 - (total % 7);
+  for(let i=1; i<=remain; i++){
+    html += `<div class="cal-cell other-month"><span class="cal-day">${i}</span></div>`;
+  }
+
+  document.getElementById('cal-grid').innerHTML = html;
+}
+
+function selectDate(ds) {
+  selectedDate = ds;
+  renderCalendar();
+  renderDayDetail(ds);
+}
+
+function renderDayDetail(ds) {
+  const ord = orders.filter(o=>o.pickupDate===ds);
+  const pending = ord.filter(o=>!isDone(o));
+  const done = ord.filter(o=>isDone(o));
+  const td = todayStr();
+  const diff = Math.round((new Date(ds)-new Date(td))/(1000*60*60*24));
+  let label = '';
+  if(diff===0) label='<span style="color:var(--red);font-weight:800">【今日】</span>';
+  else if(diff===1) label='<span style="color:var(--yellow);font-weight:800">【明日】</span>';
+  else if(diff>1) label=`<span style="color:var(--muted);font-weight:700">${diff}日後</span>`;
+  else label=`<span style="color:var(--muted);font-weight:700">${Math.abs(diff)}日前</span>`;
+
+  const dateLabel = new Date(ds+'T00:00:00').toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric',weekday:'short'});
+  const chipBg = pending.length>0 ? 'var(--red)' : '#3a3a4a';
+  const accent = diff===0?'var(--red)':diff===1?'var(--yellow)':'var(--blue)';
+
+  let cardsHtml = '';
+  if(ord.length===0){
+    cardsHtml = '<p class="empty">この日の受取予定はありません</p>';
+  } else {
+    if(pending.length>0) cardsHtml += `<div class="card-grid">${pending.map(o=>cardHTML(o,accent)).join('')}</div>`;
+    if(done.length>0) cardsHtml += `<p class="done-label">✓ 完成済み</p><div class="card-grid">${done.map(o=>cardHTML(o,'#27ae60')).join('')}</div>`;
+  }
+
+  document.getElementById('day-detail-wrap').innerHTML = `
+    <div class="day-detail">
+      <div class="day-detail-header">
+        <div>
+          <div class="day-detail-title">${dateLabel} ${label}</div>
+        </div>
+        <span class="count-chip" style="background:${chipBg};border-radius:20px;padding:3px 12px;font-size:13px;font-weight:700;color:#fff;margin-left:auto">
+          未完成 ${pending.length}件 / 計 ${ord.length}件
+        </span>
+      </div>
+      ${cardsHtml}
+    </div>`;
 }
 
 function renderCards(containerId, chipId, items, accent) {
@@ -390,7 +518,7 @@ function getStatuses(vendorId) {
 function nextStatus(o) {
   const list = getStatuses(o.vendorId);
   const idx  = list.indexOf(o.status);
-  if(idx === -1 || idx === list.size - 1) return null;
+  if(idx === -1 || idx === list.length - 1) return null;
   return list[idx + 1] || null;
 }
 
@@ -684,7 +812,16 @@ async function handleOcrImage(event) {
     try {
       const today = new Date();
       const yyyy = today.getFullYear();
-      const CLAUDE_API_KEY = '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';
+      const CLAUDE_API_KEY = localStorage.getItem('momose_claude_key') || '';
+      if(!CLAUDE_API_KEY) {
+        document.getElementById('ocr-loading').style.display = 'none';
+        document.getElementById('ocr-upload-area').style.display = 'block';
+        document.getElementById('ocr-preview').style.display = 'none';
+        showToast('⚠ 設定画面でClaude APIキーを登録してください', 'warn');
+        closeOcrModal();
+        goto('settings');
+        return;
+      }
 
       const response = await fetch(
         'https://api.anthropic.com/v1/messages',
@@ -750,14 +887,14 @@ function applyOcrResult() {
 // 設定・APIキー管理
 // ══════════════════════════════
 function initSettings() {
-  const key = localStorage.getItem('momose_gemini_key') || '';
+  const key = localStorage.getItem('momose_claude_key') || '';
   document.getElementById('s-apikey').value = key;
 }
 
 function saveApiKey() {
   const key = document.getElementById('s-apikey').value.trim();
   if(!key){ showToast('⚠ APIキーを入力してください','warn'); return; }
-  localStorage.setItem('momose_gemini_key', key);
+  localStorage.setItem('momose_claude_key', key);
   showToast('✅ APIキーを保存しました');
   goto('dashboard');
 }
@@ -770,7 +907,10 @@ function esc(s){ const d=document.createElement('div'); d.textContent=s||''; ret
 // ══════════════════════════════
 // 初期化
 // ══════════════════════════════
-renderDashboard();
+document.addEventListener('DOMContentLoaded', function() {
+  renderVendors();
+  renderDashboard();
+});
 </script>
 </body>
 </html>
