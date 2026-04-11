@@ -904,12 +904,42 @@ async function handleOcrImage(event) {
 }
 
 function applyOcrResult() {
-  document.getElementById('f-name').value    = document.getElementById('ocr-name').value;
-  document.getElementById('f-phone').value   = document.getElementById('ocr-phone').value;
-  document.getElementById('f-content').value = document.getElementById('ocr-content').value;
-  document.getElementById('f-date').value    = document.getElementById('ocr-date').value;
+  const name    = document.getElementById('ocr-name').value.trim();
+  const phone   = document.getElementById('ocr-phone').value.trim();
+  const content = document.getElementById('ocr-content').value.trim();
+  const date    = document.getElementById('ocr-date').value;
+
+  if(!name || !content || !date) {
+    closeOcrModal();
+    goto('register');
+    setTimeout(() => {
+      document.getElementById('f-name').value    = name;
+      document.getElementById('f-phone').value   = phone;
+      document.getElementById('f-content').value = content;
+      document.getElementById('f-date').value    = date;
+      showToast('⚠ 必須項目を確認して登録してください', 'warn');
+    }, 100);
+    return;
+  }
+
+  // 直接登録する
+  const vendorEl = document.getElementById('f-vendor');
+  const vendorId = vendorEl ? vendorEl.value : 'shop';
+
+  orders.push({
+    id: newId(),
+    status: '受付中',
+    createdAt: todayStr(),
+    customerName: name,
+    phone: phone,
+    repairContent: content,
+    pickupDate: date,
+    vendorId: vendorId,
+  });
+  saveO();
   closeOcrModal();
-  showToast('✅ 読み取り内容をフォームに入力しました');
+  showToast('✅ 受付登録しました');
+  goto('dashboard');
 }
 
 // ══════════════════════════════
