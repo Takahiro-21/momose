@@ -345,7 +345,6 @@ async function loadFromSheet() {
     if(orders.length > 0) {
       await fetch(GAS_URL, {
         method: 'POST',
-        mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({ action: 'save', orders }),
       });
@@ -368,7 +367,7 @@ async function loadFromSheet() {
       localStorage.setItem(LS_O, JSON.stringify(orders));
       showToast('✅ 同期完了！' + orders.length + '件');
     } else {
-      showToast('✅ 同期完了');
+      showToast('✅ 同期完了（データなし）');
     }
   } catch(e) {
     showToast('⚠ エラー: ' + e.message, 'warn');
