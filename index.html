@@ -144,11 +144,13 @@
   <span class="logo">✂ MOMOSE</span>
   <span class="logo-sub">修理管理</span>
   <div class="alert-badge" id="alertBadge">⚠ 要確認 <span id="alertCount">0</span>件</div>
+  <div id="sync-badge" style="display:none;background:var(--blue);color:#fff;border-radius:20px;padding:3px 12px;font-size:13px;font-weight:700;animation:pulse 1s infinite;">🔄 同期中...</div>
   <nav>
     <button class="active" onclick="goto('dashboard')">🏠 ホーム</button>
     <button onclick="goto('register')">＋ 受付</button>
     <button onclick="goto('list')">📋 一覧</button>
     <button onclick="goto('vendors')">🏭 委託先</button>
+    <button onclick="loadFromSheet()" style="background:var(--blue);border-color:var(--blue);color:#fff;">🔄 同期</button>
     <button onclick="goto('settings')">⚙️ 設定</button>
   </nav>
 </header>
@@ -307,8 +309,9 @@
 
 <script>
 // ══════════════════════════════
-// データ管理
+// データ管理（スプレッドシート連携）
 // ══════════════════════════════
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbwQML6zZVJLpncdXJSDDuK73ksYC9rte2ln3_DHOgrXtdE1Zq9RHIQlsFQ4tPN1UPnp/exec';
 const LS_O = 'momose_orders_v3';
 const LS_V = 'momose_vendors_v3';
 
@@ -322,7 +325,50 @@ const DEFAULT_VENDORS = [
 let orders = (() => { try { return JSON.parse(localStorage.getItem(LS_O)||'[]'); } catch{return[];} })();
 let vendors = (() => { try { const v=localStorage.getItem(LS_V); return v?JSON.parse(v):DEFAULT_VENDORS; } catch{return DEFAULT_VENDORS;} })();
 
-const saveO = () => localStorage.setItem(LS_O, JSON.stringify(orders));
+// スプレッドシートに保存
+async function saveO() {
+  localStorage.setItem(LS_O, JSON.stringify(orders));
+  try {
+    await fetch(GAS_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'save', orders }),
+    });
+  } catch(e) { console.warn('GAS保存エラー:', e); }
+}
+
+// スプレッドシートから読み込み
+async function loadFromSheet() {
+  try {
+    showSyncBadge(true);
+    const res = await fetch(GAS_URL + '?action=getAll');
+    const data = await res.json();
+    if(data.success && data.data.length > 0) {
+      orders = data.data.filter(o => o.id).map(o => ({
+        id: String(o.id),
+        customerName: o.customerName || '',
+        phone: o.phone || '',
+        repairContent: o.repairContent || '',
+        pickupDate: o.pickupDate || '',
+        vendorId: o.vendorId || 'shop',
+        status: o.status || '受付中',
+        createdAt: o.createdAt || '',
+      }));
+      localStorage.setItem(LS_O, JSON.stringify(orders));
+      showToast('✅ データを同期しました');
+    }
+  } catch(e) {
+    showToast('⚠ オフライン：ローカルデータを表示中', 'warn');
+  } finally {
+    showSyncBadge(false);
+    renderDashboard();
+  }
+}
+
+function showSyncBadge(show) {
+  let badge = document.getElementById('sync-badge');
+  if(badge) badge.style.display = show ? 'block' : 'none';
+}
+
 const saveV = () => localStorage.setItem(LS_V, JSON.stringify(vendors));
 
 // ══════════════════════════════
@@ -968,7 +1014,7 @@ function esc(s){ const d=document.createElement('div'); d.textContent=s||''; ret
 // ══════════════════════════════
 document.addEventListener('DOMContentLoaded', function() {
   renderVendors();
-  renderDashboard();
+  loadFromSheet(); // スプレッドシートから最新データを読み込む
 });
 </script>
 </body>
