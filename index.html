@@ -336,10 +336,22 @@ async function saveO() {
   } catch(e) { console.warn('GAS保存エラー:', e); }
 }
 
-// スプレッドシートから読み込み
+// スプレッドシートから読み込み＆アップロード
 async function loadFromSheet() {
   try {
     showSyncBadge(true);
+
+    // まずlocalStorageのデータをアップロード
+    if(orders.length > 0) {
+      await fetch(GAS_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action: 'save', orders }),
+      });
+    }
+
+    // 次にスプレッドシートから読み込み
     const res = await fetch(GAS_URL + '?action=getAll');
     const data = await res.json();
     if(data.success && data.data.length > 0) {
@@ -354,10 +366,12 @@ async function loadFromSheet() {
         createdAt: o.createdAt || '',
       }));
       localStorage.setItem(LS_O, JSON.stringify(orders));
-      showToast('✅ データを同期しました');
+      showToast('✅ 同期完了！' + orders.length + '件');
+    } else {
+      showToast('✅ 同期完了');
     }
   } catch(e) {
-    showToast('⚠ オフライン：ローカルデータを表示中', 'warn');
+    showToast('⚠ エラー: ' + e.message, 'warn');
   } finally {
     showSyncBadge(false);
     renderDashboard();
