@@ -354,16 +354,27 @@ async function loadFromSheet() {
     const res = await fetch(GAS_URL + '?action=getAll');
     const data = await res.json();
     if(data.success && data.data.length > 0) {
-      orders = data.data.filter(o => o.id).map(o => ({
-        id: String(o.id),
-        customerName: o.customerName || '',
-        phone: o.phone || '',
-        repairContent: o.repairContent || '',
-        pickupDate: o.pickupDate || '',
-        vendorId: o.vendorId || 'shop',
-        status: o.status || '受付中',
-        createdAt: o.createdAt || '',
-      }));
+      orders = data.data.filter(o => o.id).map(o => {
+        // 日付をYYYY-MM-DD形式に正規化
+        let pickupDate = o.pickupDate || '';
+        if(pickupDate && pickupDate.includes('T')) {
+          pickupDate = pickupDate.slice(0, 10);
+        }
+        if(pickupDate && pickupDate.toString().includes('/')) {
+          const parts = pickupDate.toString().split('/');
+          if(parts.length === 3) pickupDate = `${parts[0]}-${String(parts[1]).padStart(2,'0')}-${String(parts[2]).padStart(2,'0')}`;
+        }
+        return {
+          id: String(o.id),
+          customerName: o.customerName || '',
+          phone: o.phone || '',
+          repairContent: o.repairContent || '',
+          pickupDate: pickupDate,
+          vendorId: o.vendorId || 'shop',
+          status: o.status || '受付中',
+          createdAt: o.createdAt || '',
+        };
+      });
       localStorage.setItem(LS_O, JSON.stringify(orders));
       showToast('✅ 同期完了！' + orders.length + '件');
     } else {
