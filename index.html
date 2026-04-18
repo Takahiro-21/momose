@@ -851,6 +851,41 @@ function showToast(msg, type='ok') {
 // ══════════════════════════════
 // 写真読み取り（OCR）
 // ══════════════════════════════
+// 画像圧縮（5MB以下に圧縮）
+function compressImage(dataUrl, maxSizeMB = 4) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let { width, height } = img;
+      // 最大辺を1920pxに制限
+      const maxDim = 1920;
+      if (width > maxDim || height > maxDim) {
+        if (width > height) {
+          height = Math.round(height * maxDim / width);
+          width = maxDim;
+        } else {
+          width = Math.round(width * maxDim / height);
+          height = maxDim;
+        }
+      }
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      // 品質を下げながら5MB以下になるまで圧縮
+      let quality = 0.85;
+      let result = canvas.toDataURL('image/jpeg', quality);
+      while (result.length > maxSizeMB * 1024 * 1024 * 1.37 && quality > 0.3) {
+        quality -= 0.1;
+        result = canvas.toDataURL('image/jpeg', quality);
+      }
+      resolve(result.split(',')[1]);
+    };
+    img.src = dataUrl;
+  });
+}
+
 function openOcrModal() {
   const m = document.getElementById('ocr-modal');
   m.style.display = 'flex';
@@ -881,8 +916,8 @@ async function handleOcrImage(event) {
     document.getElementById('ocr-result').style.display = 'none';
     document.getElementById('ocr-apply-btn').style.display = 'none';
 
-    // base64データ取得
-    const base64 = e.target.result.split(',')[1];
+    // 画像を圧縮してbase64取得（5MB以下に）
+    const base64 = await compressImage(e.target.result);
 
     try {
       const today = new Date();
