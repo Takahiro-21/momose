@@ -325,34 +325,36 @@ const DEFAULT_VENDORS = [
 let orders = (() => { try { return JSON.parse(localStorage.getItem(LS_O)||'[]'); } catch{return[];} })();
 let vendors = (() => { try { const v=localStorage.getItem(LS_V); return v?JSON.parse(v):DEFAULT_VENDORS; } catch{return DEFAULT_VENDORS;} })();
 
-// スプレッドシートに保存
+// スプレッドシートに保存（即時）
 async function saveO() {
   localStorage.setItem(LS_O, JSON.stringify(orders));
   try {
     await fetch(GAS_URL, {
       method: 'POST',
-      body: JSON.stringify({ action: 'save', orders }),
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'save', orders, vendors }),
     });
   } catch(e) { console.warn('GAS保存エラー:', e); }
 }
 
-// スプレッドシートから読み込み＆アップロード
-async function loadFromSheet() {
+// 委託先をスプレッドシートに保存
+async function saveVendorsToSheet() {
   try {
-    showSyncBadge(true);
-
-    // まずlocalStorageのデータをアップロード（受注＋委託先）
     await fetch(GAS_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ action: 'save', orders, vendors }),
+      body: JSON.stringify({ action: 'saveVendors', vendors }),
     });
+  } catch(e) { console.warn('委託先保存エラー:', e); }
+}
 
-    // 次にスプレッドシートから読み込み
+// スプレッドシートから読み込み（同期ボタン用）
+async function loadFromSheet() {
+  try {
+    showSyncBadge(true);
     const res = await fetch(GAS_URL + '?action=getAll');
     const data = await res.json();
     if(data.success) {
-      // 受注データ更新
       if(data.data && data.data.length > 0) {
         orders = data.data.filter(o => o.id).map(o => {
           let pickupDate = String(o.pickupDate || '');
@@ -370,7 +372,6 @@ async function loadFromSheet() {
         });
         localStorage.setItem(LS_O, JSON.stringify(orders));
       }
-      // 委託先データ更新
       if(data.vendors && data.vendors.length > 0) {
         vendors = data.vendors;
         saveV();
@@ -820,13 +821,17 @@ function addVendor() {
   const name = inp.value.trim();
   if(!name) return;
   vendors.push({id:`v${Date.now()}`, name, isShop:false});
-  saveV(); inp.value=''; renderVendors();
+  saveV();
+  saveVendorsToSheet();
+  inp.value=''; renderVendors();
   showToast('✅ 追加しました');
 }
 
 function removeVendor(id) {
   vendors = vendors.filter(v=>v.id!==id);
-  saveV(); renderVendors();
+  saveV();
+  saveVendorsToSheet();
+  renderVendors();
   showToast('🗑 削除しました','warn');
 }
 
