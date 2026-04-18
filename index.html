@@ -341,46 +341,44 @@ async function loadFromSheet() {
   try {
     showSyncBadge(true);
 
-    // まずlocalStorageのデータをアップロード
-    if(orders.length > 0) {
-      await fetch(GAS_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ action: 'save', orders }),
-      });
-    }
+    // まずlocalStorageのデータをアップロード（受注＋委託先）
+    await fetch(GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'save', orders, vendors }),
+    });
 
     // 次にスプレッドシートから読み込み
     const res = await fetch(GAS_URL + '?action=getAll');
     const data = await res.json();
-    if(data.success && data.data.length > 0) {
-      orders = data.data.filter(o => o.id).map(o => {
-        // 日付をYYYY-MM-DD形式に正規化（タイムゾーンずれを防ぐ）
-        let pickupDate = o.pickupDate || '';
-        if(pickupDate && pickupDate.toString().includes('T')) {
-          // UTC日時を日本時間に変換してYYYY-MM-DD取得
-          const d = new Date(pickupDate);
-          const jst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
-          pickupDate = jst.toISOString().slice(0, 10);
-        } else if(pickupDate && pickupDate.toString().includes('/')) {
-          const parts = pickupDate.toString().split('/');
-          if(parts.length === 3) pickupDate = `${parts[0]}-${String(parts[1]).padStart(2,'0')}-${String(parts[2]).padStart(2,'0')}`;
-        }
-        return {
-          id: String(o.id),
-          customerName: o.customerName || '',
-          phone: o.phone || '',
-          repairContent: o.repairContent || '',
-          pickupDate: pickupDate,
-          vendorId: o.vendorId || 'shop',
-          status: o.status || '受付中',
-          createdAt: o.createdAt || '',
-        };
-      });
-      localStorage.setItem(LS_O, JSON.stringify(orders));
+    if(data.success) {
+      // 受注データ更新
+      if(data.data && data.data.length > 0) {
+        orders = data.data.filter(o => o.id).map(o => {
+          let pickupDate = String(o.pickupDate || '');
+          if(pickupDate.length > 10) pickupDate = pickupDate.slice(0, 10);
+          return {
+            id: String(o.id),
+            customerName: o.customerName || '',
+            phone: o.phone || '',
+            repairContent: o.repairContent || '',
+            pickupDate: pickupDate,
+            vendorId: o.vendorId || 'shop',
+            status: o.status || '受付中',
+            createdAt: o.createdAt || '',
+          };
+        });
+        localStorage.setItem(LS_O, JSON.stringify(orders));
+      }
+      // 委託先データ更新
+      if(data.vendors && data.vendors.length > 0) {
+        vendors = data.vendors;
+        saveV();
+        renderVendors();
+      }
       showToast('✅ 同期完了！' + orders.length + '件');
     } else {
-      showToast('✅ 同期完了（データなし）');
+      showToast('✅ 同期完了');
     }
   } catch(e) {
     showToast('⚠ エラー: ' + e.message, 'warn');
