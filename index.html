@@ -710,7 +710,7 @@ function startEdit(id) {
 // ══════════════════════════════
 // ステータス進める
 // ══════════════════════════════
-function advanceStatus(id) {
+async function advanceStatus(id) {
   const o    = orders.find(x=>x.id===id);
   if(!o) return;
   const list = getStatuses(o.vendorId);
@@ -718,7 +718,7 @@ function advanceStatus(id) {
   if(idx < 0 || idx >= list.length - 1) return;
   const newStatus = list[idx + 1];
   orders = orders.map(x=>x.id===id ? {...x, status: newStatus} : x);
-  saveO();
+  await saveO();
   showToast(`✅ ${o.customerName}さん：${newStatus}`);
   if(currentView==='dashboard') renderDashboard();
   else renderList();
