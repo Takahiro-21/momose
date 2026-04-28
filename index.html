@@ -56,7 +56,9 @@
   .card-bottom{display:flex;align-items:center;gap:8px;}
   .vendor-tag{border-radius:6px;padding:3px 10px;font-size:12px;font-weight:700;color:#fff;}
   .status-btn{border:none;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:700;
-    color:#fff;white-space:nowrap;font-family:inherit;}
+    color:#fff;white-space:nowrap;font-family:inherit;cursor:pointer;
+    touch-action:manipulation;-webkit-tap-highlight-color:rgba(0,0,0,0);
+    user-select:none;-webkit-user-select:none;}
   .edit-btn{margin-left:auto;background:transparent;border:1px solid var(--border);
     color:var(--muted);border-radius:6px;padding:4px 10px;font-size:12px;font-family:inherit;}
   .empty{color:var(--muted);text-align:center;padding:28px 0;}
@@ -632,7 +634,10 @@ function cardHTML(o, accent) {
         </div>
         ${hasNext
           ? `<button class="status-btn" style="background:${STATUS_COLOR[list[idx+1]]||'#444'}"
-               data-order-id="${o.id}" onclick="advanceStatus(this.dataset.orderId)">→ ${esc(list[idx+1])}</button>`
+               data-order-id="${o.id}" 
+               ontouchstart="this.style.opacity='0.7'"
+               ontouchend="this.style.opacity='1';advanceStatus(this.dataset.orderId)"
+               onclick="advanceStatus(this.dataset.orderId)">→ ${esc(list[idx+1])}</button>`
           : `<span class="status-btn" style="background:#27ae60;cursor:default">✓ 完成</span>`
         }
       </div>
@@ -788,7 +793,10 @@ function renderList() {
         <div class="list-actions">
           ${hasNext
             ? `<button class="status-btn" style="background:${STATUS_COLOR[statuses[idx+1]]||'#444'};font-size:12px;padding:6px 10px"
-                 data-order-id="${o.id}" onclick="advanceStatus(this.dataset.orderId)">→ ${esc(statuses[idx+1])}</button>`
+                 data-order-id="${o.id}"
+                 ontouchstart="this.style.opacity='0.7'"
+                 ontouchend="this.style.opacity='1';advanceStatus(this.dataset.orderId)"
+                 onclick="advanceStatus(this.dataset.orderId)">→ ${esc(statuses[idx+1])}</button>`
             : `<span class="status-btn" style="background:#27ae60;font-size:12px;padding:6px 10px;cursor:default">✓ 完成</span>`
           }
           <button class="edit-btn" data-order-id="${o.id}" onclick="startEdit(this.dataset.orderId)">編集</button>
