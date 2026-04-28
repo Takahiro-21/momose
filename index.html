@@ -565,6 +565,23 @@ function renderCards(containerId, chipId, items, accent) {
   if(pending.length>0) html += `<div class="card-grid">${pending.map(o=>cardHTML(o,accent)).join('')}</div>`;
   if(done.length>0) html += `<p class="done-label">✓ 完成済み</p><div class="card-grid">${done.map(o=>cardHTML(o,accent)).join('')}</div>`;
   el.innerHTML = html;
+
+  // ステータスボタンにイベントリスナーを追加
+  bindStatusButtons(el);
+}
+
+function bindStatusButtons(container) {
+  const btns = container.querySelectorAll('[id^="sbtn-"]');
+  btns.forEach(btn => {
+    const id = btn.id.replace('sbtn-', '');
+    btn.addEventListener('touchend', function(e) {
+      e.preventDefault();
+      advanceStatus(id);
+    }, { passive: false });
+    btn.addEventListener('click', function(e) {
+      advanceStatus(id);
+    });
+  });
 }
 
 // ══════════════════════════════
@@ -633,12 +650,9 @@ function cardHTML(o, accent) {
           ${o.phone?`<div class="phone">${esc(o.phone)}</div>`:''}
         </div>
         ${hasNext
-          ? `<button class="status-btn" style="background:${STATUS_COLOR[list[idx+1]]||'#444'}"
-               data-order-id="${o.id}" 
-               ontouchstart="this.style.opacity='0.7'"
-               ontouchend="this.style.opacity='1';advanceStatus(this.dataset.orderId)"
-               onclick="advanceStatus(this.dataset.orderId)">→ ${esc(list[idx+1])}</button>`
-          : `<span class="status-btn" style="background:#27ae60;cursor:default">✓ 完成</span>`
+          ? `<div class="status-btn" style="background:${STATUS_COLOR[list[idx+1]]||'#444'};cursor:pointer"
+               id="sbtn-${o.id}">→ ${esc(list[idx+1])}</div>`
+          : `<div class="status-btn" style="background:#27ae60;cursor:default">✓ 完成</div>`
         }
       </div>
       <div style="display:flex;align-items:center;gap:3px;flex-wrap:wrap;margin-bottom:8px">${steps}</div>
@@ -792,21 +806,19 @@ function renderList() {
         </div>
         <div class="list-actions">
           ${hasNext
-            ? `<button class="status-btn" style="background:${STATUS_COLOR[statuses[idx+1]]||'#444'};font-size:12px;padding:6px 10px"
-                 data-order-id="${o.id}"
-                 ontouchstart="this.style.opacity='0.7'"
-                 ontouchend="this.style.opacity='1';advanceStatus(this.dataset.orderId)"
-                 onclick="advanceStatus(this.dataset.orderId)">→ ${esc(statuses[idx+1])}</button>`
-            : `<span class="status-btn" style="background:#27ae60;font-size:12px;padding:6px 10px;cursor:default">✓ 完成</span>`
+            ? `<div class="status-btn" style="background:${STATUS_COLOR[statuses[idx+1]]||'#444'};font-size:12px;padding:6px 10px;cursor:pointer"
+                 id="sbtn-${o.id}">→ ${esc(statuses[idx+1])}</div>`
+            : `<div class="status-btn" style="background:#27ae60;font-size:12px;padding:6px 10px;cursor:default">✓ 完成</div>`
           }
           <button class="edit-btn" data-order-id="${o.id}" onclick="startEdit(this.dataset.orderId)">編集</button>
           <button class="del-btn" data-order-id="${o.id}" onclick="deleteOrder(this.dataset.orderId)">削除</button>
         </div>
       </div>`;
   }).join('');
-}
 
-function setFilter(f){ listFilter=f; renderList(); }
+  // ステータスボタンにイベントリスナーを追加
+  bindStatusButtons(document.getElementById('list-items'));
+}
 
 function deleteOrder(id) {
   if(!confirm('この記録を削除しますか？')) return;
