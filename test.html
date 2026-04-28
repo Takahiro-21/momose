@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>テスト</title></head>
+<body style="background:#1a1a2e;color:white;padding:40px;font-size:20px;">
+<h2>ボタンテスト</h2>
+<button onclick="alert('ボタン1動作OK')" style="padding:20px;font-size:18px;margin:10px;">ボタン1（onclick）</button>
+<br>
+<button id="btn2" style="padding:20px;font-size:18px;margin:10px;">ボタン2（addEventListener）</button>
+<br>
+<button data-id="test123" onclick="alert('ID: ' + this.dataset.id)" style="padding:20px;font-size:18px;margin:10px;">ボタン3（data属性）</button>
+<p id="result" style="color:yellow;margin-top:20px;"></p>
+<script>
+document.getElementById('btn2').addEventListener('click', function() {
+  document.getElementById('result').textContent = 'ボタン2動作OK！';
+});
+</script>
+</body>
+</html>
