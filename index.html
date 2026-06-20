@@ -22,7 +22,6 @@
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
 
-  // グローバルに公開
   window.db = db;
   window.fsCollection = collection;
   window.fsDoc = doc;
@@ -33,7 +32,6 @@
   window.fsQuery = query;
   window.fsOrderBy = orderBy;
 
-  // 初期化完了を通知
   window.dispatchEvent(new Event('firebase-ready'));
 </script>
 
@@ -63,7 +61,6 @@ body {
   overflow-x: hidden;
 }
 
-/* ヘッダー */
 .header {
   display: flex;
   align-items: center;
@@ -96,7 +93,6 @@ body {
   display: none;
 }
 
-/* ナビ */
 nav {
   display: flex;
   gap: 4px;
@@ -126,11 +122,9 @@ nav button.active {
   font-weight: 700;
 }
 
-/* メインコンテンツ */
 .view { display: none; padding: 16px; }
 .view.active { display: block; }
 
-/* カレンダー */
 .cal-header {
   display: flex;
   align-items: center;
@@ -212,7 +206,6 @@ nav button.active {
   margin-top: 1px;
 }
 
-/* 日別詳細 */
 .day-detail {
   background: var(--surface);
   border-radius: 12px;
@@ -236,7 +229,6 @@ nav button.active {
   margin-bottom: 12px;
 }
 
-/* カード */
 .card {
   background: var(--surface2);
   border: 1px solid var(--border);
@@ -265,7 +257,6 @@ nav button.active {
   color: #fff;
 }
 
-/* ステータスボタン */
 .status-btn {
   display: inline-block;
   border: none;
@@ -287,7 +278,6 @@ nav button.active {
   cursor: default;
 }
 
-/* 一覧 */
 .search-box {
   width: 100%;
   background: var(--surface2);
@@ -379,7 +369,6 @@ nav button.active {
   touch-action: manipulation;
 }
 
-/* フォーム */
 .form-section {
   background: var(--surface);
   border-radius: 12px;
@@ -438,7 +427,6 @@ select.inp { appearance: none; cursor: pointer; }
   touch-action: manipulation;
 }
 
-/* OCRボタン */
 .ocr-btn {
   width: 100%;
   background: var(--surface2);
@@ -454,7 +442,6 @@ select.inp { appearance: none; cursor: pointer; }
   touch-action: manipulation;
 }
 
-/* OCRモーダル */
 .modal-overlay {
   display: none;
   position: fixed;
@@ -502,7 +489,6 @@ select.inp { appearance: none; cursor: pointer; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* 委託先 */
 .vendor-item {
   display: flex;
   align-items: center;
@@ -516,7 +502,6 @@ select.inp { appearance: none; cursor: pointer; }
 
 .vendor-name { font-size: 15px; font-weight: 600; }
 
-/* 設定 */
 .setting-card {
   background: var(--surface);
   border-radius: 12px;
@@ -524,7 +509,6 @@ select.inp { appearance: none; cursor: pointer; }
   margin-bottom: 16px;
 }
 
-/* トースト */
 #toast {
   position: fixed;
   bottom: 24px;
@@ -586,6 +570,10 @@ select.inp { appearance: none; cursor: pointer; }
     <div class="form-title">＋ 新規受付登録</div>
     <button class="ocr-btn" onclick="openOcrModal()">📷 伝票を写真で読み取る（自動入力）</button>
     <p style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:12px;">↑ 写真を撮るだけで下のフォームに自動入力されます</p>
+
+    <!-- ★追加：受付日 -->
+    <label class="required">受付日</label>
+    <input type="date" id="f-accept-date" class="inp">
 
     <label class="required">受取予定日</label>
     <input type="date" id="f-date" class="inp">
@@ -674,9 +662,6 @@ select.inp { appearance: none; cursor: pointer; }
 <div id="toast"></div>
 
 <script>
-// ══════════════════════════════
-// データ
-// ══════════════════════════════
 let orders = [];
 let vendors = [
   {id:'shop', name:'店舗内作業', isShop:true}
@@ -759,7 +744,6 @@ function startRealtimeSync() {
   unsubOrders = window.fsOnSnapshot(q, (snap) => {
     orders = [];
     snap.forEach(d => orders.push(d.data()));
-    // 日付でソート
     orders.sort((a,b) => (a.pickupDate||'').localeCompare(b.pickupDate||''));
 
     updateAlertBadge();
@@ -774,9 +758,6 @@ function startRealtimeSync() {
   });
 }
 
-// ══════════════════════════════
-// Firebase初期化待ち
-// ══════════════════════════════
 window.addEventListener('firebase-ready', async () => {
   await loadVendors();
   startRealtimeSync();
@@ -833,17 +814,14 @@ function renderDashboard() {
   const last = new Date(calYear, calMonth+1, 0);
   const today = todayStr();
 
-  // カレンダーグリッド
   const dows = ['日','月','火','水','木','金','土'];
   let html = dows.map(d => `<div class="dow">${d}</div>`).join('');
 
-  // 前月の日
   for (let i = 0; i < first.getDay(); i++) {
     const d = new Date(calYear, calMonth, -first.getDay()+i+1);
     html += `<div class="cal-cell other-month"><div class="cal-day">${d.getDate()}</div></div>`;
   }
 
-  // 当月の日
   for (let d = 1; d <= last.getDate(); d++) {
     const ds = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const dayOrders = orders.filter(o => o.pickupDate === ds);
@@ -873,7 +851,6 @@ function renderDashboard() {
     </div>`;
   }
 
-  // 翌月
   const remaining = 7 - ((first.getDay() + last.getDate()) % 7);
   if (remaining < 7) {
     for (let i = 1; i <= remaining; i++) {
@@ -918,7 +895,6 @@ function renderDayDetail(ds) {
       ${cardsHtml}
     </div>`;
 
-  // ステータスボタンのイベントをバインド
   bindStatusBtns(document.getElementById('dayDetail'));
 }
 
@@ -934,11 +910,17 @@ function cardHTML(o) {
     ? `<div class="status-btn" style="background:${STATUS_COLOR[statuses[idx+1]]||'#444'}" data-id="${o.id}">→ ${statuses[idx+1]}</div>`
     : `<div class="status-btn status-done">✓ 完成</div>`;
 
+  // ★受付日の表示（データにある場合のみ）
+  const acceptDateHtml = o.acceptDate
+    ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">受付日: ${o.acceptDate}</div>`
+    : '';
+
   return `<div class="card">
     <div class="card-header">
       <div>
         <div class="customer-name">${esc(o.customerName)}</div>
         ${o.phone ? `<div class="phone">${esc(o.phone)}</div>` : ''}
+        ${acceptDateHtml}
       </div>
       ${statusBtn}
     </div>
@@ -950,11 +932,9 @@ function cardHTML(o) {
   </div>`;
 }
 
-// ステータスボタンのイベントバインド（共通）
 function bindStatusBtns(container) {
   if (!container) return;
   container.querySelectorAll('.status-btn[data-id]').forEach(btn => {
-    // 既存のリスナーを削除して再追加
     const newBtn = btn.cloneNode(true);
     btn.parentNode.replaceChild(newBtn, btn);
     newBtn.addEventListener('click', function() {
@@ -979,12 +959,10 @@ function advanceStatus(id) {
   const newStatus = list[idx + 1];
   const updated = { ...o, status: newStatus, updatedAt: new Date().toISOString() };
 
-  // ローカル即時更新
   orders = orders.map(x => x.id === id ? updated : x);
   if (currentView === 'dashboard') renderDashboard();
   if (currentView === 'list') renderList();
 
-  // Firebaseに保存
   fbSaveOrder(updated);
   showToast(`✅ ${o.customerName}さん：${newStatus}`);
 }
@@ -1017,7 +995,6 @@ function renderList() {
   if (listFilter === 'pending') filtered = filtered.filter(o => !isDone(o));
   if (listFilter === 'done') filtered = filtered.filter(o => isDone(o));
 
-  // 日付逆順
   filtered = [...filtered].sort((a,b) => (b.pickupDate||'').localeCompare(a.pickupDate||''));
 
   if (filtered.length === 0) {
@@ -1031,12 +1008,20 @@ function renderList() {
     const hasNext = idx >= 0 && idx < statuses.length - 1;
     const mm = (o.pickupDate||'').slice(5,7);
     const dd = (o.pickupDate||'').slice(8,10);
+    // ★受付日も表示
+    const acceptMm = (o.acceptDate||'').slice(5,7);
+    const acceptDd = (o.acceptDate||'').slice(8,10);
+    const acceptLabel = o.acceptDate ? `受付${acceptMm}/${acceptDd}` : '';
+
     const statusBtn = hasNext
       ? `<div class="status-btn" style="background:${STATUS_COLOR[statuses[idx+1]]||'#444'};font-size:12px;padding:6px 10px" data-id="${o.id}">→ ${statuses[idx+1]}</div>`
       : `<div class="status-btn status-done" style="font-size:12px;padding:6px 10px">✓ 完成</div>`;
 
     return `<div class="list-item">
-      <div class="list-date">${mm}/${dd}</div>
+      <div class="list-date">
+        <div>${mm}/${dd}</div>
+        ${acceptLabel ? `<div style="font-size:10px;color:var(--muted)">${acceptLabel}</div>` : ''}
+      </div>
       <div class="list-info">
         <div class="list-name">${esc(o.customerName)}</div>
         <div class="list-repair">${esc(o.repairContent)}</div>
@@ -1063,12 +1048,16 @@ function initForm(id) {
   if (id) {
     const o = orders.find(x => x.id === id);
     if (!o) return;
+    // ★受付日：既存データにあればセット、なければ今日
+    document.getElementById('f-accept-date').value = o.acceptDate || todayStr();
     document.getElementById('f-date').value = o.pickupDate || '';
     document.getElementById('f-name').value = o.customerName || '';
     document.getElementById('f-phone').value = o.phone || '';
     document.getElementById('f-repair').value = o.repairContent || '';
     document.getElementById('f-vendor').value = o.vendorId || 'shop';
   } else {
+    // ★新規登録時：受付日に今日の日付を自動セット
+    document.getElementById('f-accept-date').value = todayStr();
     document.getElementById('f-date').value = '';
     document.getElementById('f-name').value = '';
     document.getElementById('f-phone').value = '';
@@ -1090,12 +1079,14 @@ function renderVendorSelect() {
 }
 
 function saveOrder() {
+  const acceptDate = document.getElementById('f-accept-date').value;
   const pickupDate = document.getElementById('f-date').value;
   const customerName = document.getElementById('f-name').value.trim();
   const phone = document.getElementById('f-phone').value.trim();
   const repairContent = document.getElementById('f-repair').value.trim();
   const vendorId = document.getElementById('f-vendor').value;
 
+  if (!acceptDate) { showToast('⚠ 受付日を入力してください', 'warn'); return; }
   if (!pickupDate) { showToast('⚠ 受取予定日を入力してください', 'warn'); return; }
   if (!customerName) { showToast('⚠ お客様名を入力してください', 'warn'); return; }
   if (!repairContent) { showToast('⚠ 修理内容を入力してください', 'warn'); return; }
@@ -1105,6 +1096,7 @@ function saveOrder() {
 
   const order = {
     id,
+    acceptDate,        // ★受付日を追加
     customerName,
     phone,
     repairContent,
@@ -1196,6 +1188,7 @@ async function importFromSheet() {
       if (pd.length > 10) pd = pd.slice(0, 10);
       const order = {
         id: String(o.id),
+        acceptDate: o.acceptDate || '',
         customerName: o.customerName || '',
         phone: o.phone || '',
         repairContent: o.repairContent || '',
@@ -1302,11 +1295,11 @@ async function handleOcrImage(event) {
       const clean = text.replace(/```json|```/g, '').trim();
       const parsed = JSON.parse(clean);
 
-      // フォームに入力
       if (parsed.pickupDate) document.getElementById('f-date').value = parsed.pickupDate;
       if (parsed.customerName) document.getElementById('f-name').value = parsed.customerName;
       if (parsed.phone) document.getElementById('f-phone').value = parsed.phone;
       if (parsed.repairContent) document.getElementById('f-repair').value = parsed.repairContent;
+      // ★OCR後も受付日は今日のまま（自動設定済み）
 
       closeOcrModal();
       showToast('✅ 読み取り完了！内容を確認してください');
@@ -1338,11 +1331,7 @@ function showToast(msg, type = 'ok') {
   _toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
 }
 
-// 初期表示
-window.addEventListener('DOMContentLoaded', () => {
-  // Firebase readyイベントが来るまで待つ
-  // firebase-readyイベントはモジュールが読み込まれたら発火
-});
+window.addEventListener('DOMContentLoaded', () => {});
 </script>
 </body>
 </html>
