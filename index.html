@@ -37,18 +37,18 @@
 
 <style>
 :root {
-  --bg: #0f0f1a;
-  --surface: #1a1a2e;
-  --surface2: #252540;
-  --border: #2e2e4a;
-  --text: #e8e8f0;
-  --muted: #6b6b8a;
-  --blue: #4d7fff;
-  --green: #22c55e;
-  --red: #ef4444;
-  --orange: #f97316;
-  --purple: #a855f7;
-  --accent: #e8a838;
+  --bg: #162035;
+  --surface: #1e2a4a;
+  --surface2: #2d3f6b;
+  --border: #3d5280;
+  --text: #f0f4ff;
+  --muted: #94a3b8;
+  --blue: #60a5fa;
+  --green: #4ade80;
+  --red: #f87171;
+  --orange: #fb923c;
+  --purple: #c084fc;
+  --accent: #fbbf24;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -174,11 +174,39 @@ nav button.active {
   position: relative;
   overflow: hidden;
 }
+.cal-cell:hover { border-color: #60a5fa; }
 
 .cal-cell:active { opacity: 0.7; }
 .cal-cell.other-month { opacity: 0.3; }
-.cal-cell.today { border-color: var(--red); border-width: 2px; }
-.cal-cell.selected { border-color: var(--blue); border-width: 2px; background: #1a2a4a; }
+.cal-cell.today {
+  border-color: #facc15;
+  border-width: 3px;
+  box-shadow: 0 0 8px rgba(250,204,21,0.6);
+  overflow: visible;
+  position: relative;
+}
+.cal-cell.today::before {
+  content: 'TODAY';
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #facc15;
+  color: #7a4a00;
+  font-size: 8px;
+  font-weight: 900;
+  border-radius: 4px;
+  padding: 1px 5px;
+  white-space: nowrap;
+  z-index: 10;
+}
+.cal-cell.today .cal-day {
+  color: #facc15;
+  font-size: 13px;
+  font-weight: 900;
+  margin-top: 4px;
+}
+.cal-cell.selected { border-color: #60a5fa; border-width: 3px; background: rgba(96,165,250,0.15); box-shadow: 0 0 0 2px rgba(96,165,250,0.3); }
 
 .cal-day {
   font-size: 12px;
@@ -208,6 +236,7 @@ nav button.active {
 
 .day-detail {
   background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 16px;
   margin-bottom: 16px;
@@ -626,9 +655,6 @@ select.inp { appearance: none; cursor: pointer; }
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   padding: 6px 12px;
-  position: sticky;
-  top: 57px;
-  z-index: 99;
 }
 .header-search-input {
   width: 100%;
@@ -671,7 +697,7 @@ select.inp { appearance: none; cursor: pointer; }
 .search-overlay {
   display: none;
   position: fixed;
-  top: 105px;
+  top: 0;
   left: 0;
   right: 0;
   bottom: 0;
@@ -698,6 +724,14 @@ select.inp { appearance: none; cursor: pointer; }
   <span class="sync-status" id="syncStatus">● リアルタイム同期中</span>
 </div>
 
+<nav id="nav">
+  <button onclick="goto('dashboard')" id="nav-dashboard">🏠 ホーム</button>
+  <button onclick="goto('register')" id="nav-register">＋ 受付</button>
+  <button onclick="goto('list')" id="nav-list">📋 一覧</button>
+  <button onclick="goto('vendors')" id="nav-vendors">🏭 委託先</button>
+  <button onclick="goto('settings')" id="nav-settings">⚙️ 設定</button>
+</nav>
+
 <!-- ヘッダー検索バー -->
 <div class="header-search-bar">
   <div class="header-search-wrap">
@@ -712,14 +746,6 @@ select.inp { appearance: none; cursor: pointer; }
   <div class="search-result-count" id="searchResultCount"></div>
   <div id="searchResultList"></div>
 </div>
-
-<nav id="nav">
-  <button onclick="goto('dashboard')" id="nav-dashboard">🏠 ホーム</button>
-  <button onclick="goto('register')" id="nav-register">＋ 受付</button>
-  <button onclick="goto('list')" id="nav-list">📋 一覧</button>
-  <button onclick="goto('vendors')" id="nav-vendors">🏭 委託先</button>
-  <button onclick="goto('settings')" id="nav-settings">⚙️ 設定</button>
-</nav>
 
 <!-- ホーム（カレンダー） -->
 <div class="view" id="view-dashboard">
