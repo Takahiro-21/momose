@@ -620,6 +620,73 @@ select.inp { appearance: none; cursor: pointer; }
 .pickup-badge.today { background: var(--red); color: #fff; }
 .pickup-badge.tomorrow { background: var(--orange); color: #fff; }
 .pickup-badge.soon { background: var(--accent); color: #000; }
+
+/* ヘッダー検索バー */
+.header-search-bar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 6px 12px;
+  position: sticky;
+  top: 57px;
+  z-index: 99;
+}
+.header-search-input {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 20px;
+  padding: 8px 16px 8px 36px;
+  font-size: 14px;
+  font-family: inherit;
+  position: relative;
+}
+.header-search-input:focus { outline: none; border-color: var(--blue); }
+.header-search-wrap {
+  position: relative;
+}
+.header-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+  pointer-events: none;
+}
+.header-search-clear {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--muted);
+  display: none;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+/* 検索結果オーバーレイ */
+.search-overlay {
+  display: none;
+  position: fixed;
+  top: 105px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--bg);
+  z-index: 98;
+  overflow-y: auto;
+  padding: 12px;
+}
+.search-overlay.active { display: block; }
+.search-result-count {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 10px;
+  padding: 0 2px;
+}
 </style>
 </head>
 <body>
@@ -629,6 +696,21 @@ select.inp { appearance: none; cursor: pointer; }
   <span class="logo-sub">修理管理</span>
   <div class="alert-badge" id="alertBadge">⚠ 要確認 <span id="alertCount">0</span>件</div>
   <span class="sync-status" id="syncStatus">● リアルタイム同期中</span>
+</div>
+
+<!-- ヘッダー検索バー -->
+<div class="header-search-bar">
+  <div class="header-search-wrap">
+    <span class="header-search-icon">🔍</span>
+    <input type="text" class="header-search-input" id="headerSearch" placeholder="お客様名で検索..." oninput="handleHeaderSearch(this.value)">
+    <button class="header-search-clear" id="headerSearchClear" onclick="clearHeaderSearch()">✕</button>
+  </div>
+</div>
+
+<!-- 検索結果オーバーレイ -->
+<div class="search-overlay" id="searchOverlay">
+  <div class="search-result-count" id="searchResultCount"></div>
+  <div id="searchResultList"></div>
 </div>
 
 <nav id="nav">
@@ -892,7 +974,92 @@ function updateAlertBadge() {
 // ══════════════════════════════
 // カレンダー
 // ══════════════════════════════
+// ══════════════════════════════
+// ヘッダー検索
+// ══════════════════════════════
+function handleHeaderSearch(val) {
+  const clearBtn = document.getElementById('headerSearchClear');
+  const overlay = document.getElementById('searchOverlay');
+
+  if (!val.trim()) {
+    clearBtn.style.display = 'none';
+    overlay.classList.remove('active');
+    return;
+  }
+
+  clearBtn.style.display = 'block';
+  overlay.classList.add('active');
+  renderSearchResults(val.trim());
+}
+
+function clearHeaderSearch() {
+  document.getElementById('headerSearch').value = '';
+  document.getElementById('headerSearchClear').style.display = 'none';
+  document.getElementById('searchOverlay').classList.remove('active');
+}
+
+function renderSearchResults(q) {
+  const filtered = orders.filter(o =>
+    (o.customerName || '').includes(q)
+  ).sort((a,b) => (b.pickupDate||'').localeCompare(a.pickupDate||''));
+
+  const countEl = document.getElementById('searchResultCount');
+  const listEl = document.getElementById('searchResultList');
+
+  if (filtered.length === 0) {
+    countEl.textContent = '「' + q + '」の検索結果：0件';
+    listEl.innerHTML = '<p class="empty">該当するお客様が見つかりません</p>';
+    return;
+  }
+
+  countEl.textContent = '「' + q + '」の検索結果：' + filtered.length + '件';
+
+  const weekdays = ['日','月','火','水','木','金','土'];
+  const html = filtered.map(o => {
+    const statuses = getStatuses(o.vendorId);
+    const idx = statuses.indexOf(o.status);
+    const hasNext = idx >= 0 && idx < statuses.length - 1;
+    const mm = (o.pickupDate||'').slice(5,7);
+    const dd = (o.pickupDate||'').slice(8,10);
+    const dow = o.pickupDate ? weekdays[new Date(o.pickupDate + 'T00:00:00').getDay()] : '';
+
+    const diff = o.pickupDate ? dateDiff(o.pickupDate) : null;
+    let itemCls = 'list-item';
+    let pickupBadge = '';
+    if (!isDone(o) && diff !== null) {
+      if (diff === 1) { itemCls += ' today-item'; pickupBadge = '<span class="pickup-badge today">明日</span>'; }
+      else if (diff === 2) { itemCls += ' tomorrow-item'; pickupBadge = '<span class="pickup-badge tomorrow">2日後</span>'; }
+      else if (diff === 3) { itemCls += ' soon-item'; pickupBadge = `<span class="pickup-badge soon">3日後</span>`; }
+    }
+
+    const statusBtn = hasNext
+      ? `<div class="status-btn" style="background:${STATUS_COLOR[statuses[idx+1]]||'#444'};font-size:12px;padding:6px 10px" data-id="${o.id}">→ ${statuses[idx+1]}</div>`
+      : `<div class="status-btn status-done" style="font-size:12px;padding:6px 10px">✓ 完成</div>`;
+
+    return `<div class="${itemCls}">
+      <div class="list-date">
+        <div>${mm}/${dd}(${dow})</div>
+        ${pickupBadge}
+      </div>
+      <div class="list-info">
+        <div class="list-name">${esc(o.customerName)}</div>
+        <div class="list-repair">${esc(o.repairContent)}</div>
+      </div>
+      <div class="list-actions">
+        ${statusBtn}
+        <button class="edit-btn" onclick="clearHeaderSearch();startEdit('${o.id}')">編集</button>
+        <button class="del-btn" onclick="deleteOrder('${o.id}')">削除</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  listEl.innerHTML = html;
+  bindStatusBtns(listEl);
+}
+
+// ══════════════════════════════
 // 日付の差分（日数）を返す
+// ══════════════════════════════
 function dateDiff(ds) {
   const today = new Date(todayStr() + 'T00:00:00');
   const target = new Date(ds + 'T00:00:00');
