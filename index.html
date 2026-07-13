@@ -564,6 +564,50 @@ select.inp { appearance: none; cursor: pointer; }
 
 .required::after { content: ' *'; color: var(--red); }
 
+/* カード編集ポップアップ */
+.edit-popup-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 300;
+  align-items: flex-end;
+  justify-content: center;
+}
+.edit-popup-overlay.active { display: flex; }
+.edit-popup {
+  background: var(--surface);
+  border-radius: 20px 20px 0 0;
+  padding: 20px;
+  width: 100%;
+  max-width: 600px;
+  border-top: 3px solid var(--blue);
+  max-height: 85vh;
+  overflow-y: auto;
+}
+.edit-popup-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.edit-popup-close {
+  background: var(--surface2);
+  border: none;
+  color: var(--muted);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* 直近アラートパネル */
 .urgent-panel {
   margin-bottom: 14px;
@@ -854,6 +898,38 @@ select.inp { appearance: none; cursor: pointer; }
   </div>
 </div>
 
+<!-- カード編集ポップアップ -->
+<div class="edit-popup-overlay" id="editPopupOverlay">
+  <div class="edit-popup">
+    <div class="edit-popup-title">
+      ✏️ 編集
+      <button class="edit-popup-close" onclick="closeEditPopup()">✕</button>
+    </div>
+
+    <label class="required">受付日</label>
+    <input type="date" id="ep-accept-date" class="inp">
+
+    <label class="required">受取予定日</label>
+    <input type="date" id="ep-date" class="inp">
+
+    <label class="required">お客様名</label>
+    <input type="text" id="ep-name" class="inp">
+
+    <label>電話番号</label>
+    <input type="tel" id="ep-phone" class="inp">
+
+    <label class="required">修理内容</label>
+    <textarea id="ep-repair" class="inp"></textarea>
+
+    <label>委託先</label>
+    <select id="ep-vendor" class="inp"></select>
+
+    <input type="hidden" id="ep-id">
+    <button class="btn-primary" onclick="saveEditPopup()">💾 保存する</button>
+    <button class="btn-cancel" onclick="closeEditPopup()">キャンセル</button>
+  </div>
+</div>
+
 <!-- トースト -->
 <div id="toast"></div>
 
@@ -1000,6 +1076,70 @@ function updateAlertBadge() {
 // ══════════════════════════════
 // カレンダー
 // ══════════════════════════════
+// ══════════════════════════════
+// カード編集ポップアップ
+// ══════════════════════════════
+function openEditPopup(id) {
+  const o = orders.find(x => x.id === id);
+  if (!o) return;
+
+  document.getElementById('ep-id').value = id;
+  document.getElementById('ep-accept-date').value = o.acceptDate || todayStr();
+  document.getElementById('ep-date').value = o.pickupDate || '';
+  document.getElementById('ep-name').value = o.customerName || '';
+  document.getElementById('ep-phone').value = o.phone || '';
+  document.getElementById('ep-repair').value = o.repairContent || '';
+
+  // 委託先セレクト
+  const sel = document.getElementById('ep-vendor');
+  sel.innerHTML = vendors.map(v => `<option value="${v.id}">${v.name}</option>`).join('');
+  sel.value = o.vendorId || 'shop';
+
+  document.getElementById('editPopupOverlay').classList.add('active');
+}
+
+function closeEditPopup() {
+  document.getElementById('editPopupOverlay').classList.remove('active');
+}
+
+function saveEditPopup() {
+  const id = document.getElementById('ep-id').value;
+  const acceptDate = document.getElementById('ep-accept-date').value;
+  const pickupDate = document.getElementById('ep-date').value;
+  const customerName = document.getElementById('ep-name').value.trim();
+  const phone = document.getElementById('ep-phone').value.trim();
+  const repairContent = document.getElementById('ep-repair').value.trim();
+  const vendorId = document.getElementById('ep-vendor').value;
+
+  if (!acceptDate) { showToast('⚠ 受付日を入力してください', 'warn'); return; }
+  if (!pickupDate) { showToast('⚠ 受取予定日を入力してください', 'warn'); return; }
+  if (!customerName) { showToast('⚠ お客様名を入力してください', 'warn'); return; }
+  if (!repairContent) { showToast('⚠ 修理内容を入力してください', 'warn'); return; }
+
+  const existing = orders.find(o => o.id === id);
+  if (!existing) return;
+
+  const updated = {
+    ...existing,
+    acceptDate,
+    pickupDate,
+    customerName,
+    phone,
+    repairContent,
+    vendorId,
+    updatedAt: new Date().toISOString()
+  };
+
+  fbSaveOrder(updated);
+  closeEditPopup();
+  showToast('✅ 更新しました');
+}
+
+// ポップアップ外タップで閉じる
+document.getElementById('editPopupOverlay')?.addEventListener('click', function(e) {
+  if (e.target === this) closeEditPopup();
+});
+
 // ══════════════════════════════
 // ヘッダー検索
 // ══════════════════════════════
@@ -1282,6 +1422,7 @@ function cardHTML(o) {
     <div class="tags">
       <span class="tag" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border)">🏭 ${esc(vendorName)}</span>
       <span class="tag" style="background:${statusColor}">${esc(o.status)}</span>
+      <button class="edit-btn" style="margin-left:auto" onclick="openEditPopup('${o.id}')">✏️ 編集</button>
     </div>
   </div>`;
 }
