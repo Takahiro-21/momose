@@ -694,6 +694,49 @@ select.inp { appearance: none; cursor: pointer; }
 .pickup-badge.tomorrow { background: var(--orange); color: #fff; }
 .pickup-badge.soon { background: var(--accent); color: #000; }
 
+/* 作業開始アラートパネル */
+.work-alert-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+.work-alert-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+.work-alert-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  margin-bottom: 5px;
+}
+.work-alert-row:last-child { margin-bottom: 0; }
+.work-alert-row.wa-today { background: rgba(248,113,113,0.15); border: 1px solid rgba(248,113,113,0.4); }
+.work-alert-row.wa-tomorrow { background: rgba(251,146,60,0.15); border: 1px solid rgba(251,146,60,0.4); }
+.work-alert-row.wa-soon { background: rgba(251,191,36,0.15); border: 1px solid rgba(251,191,36,0.4); }
+.wa-badge {
+  font-size: 9px;
+  font-weight: 700;
+  border-radius: 5px;
+  padding: 2px 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.wa-badge.wa-today { background: var(--red); color: #fff; }
+.wa-badge.wa-tomorrow { background: var(--orange); color: #fff; }
+.wa-badge.wa-soon { background: var(--accent); color: #7a4a00; }
+.wa-info { flex: 1; min-width: 0; }
+.wa-name { font-size: 13px; font-weight: 700; color: var(--text); }
+.wa-repair { font-size: 10px; color: var(--muted); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wa-deadline { font-size: 10px; font-weight: 700; color: var(--blue); white-space: nowrap; }
+
 /* ヘッダー検索バー */
 .header-search-bar {
   background: var(--surface);
@@ -795,6 +838,8 @@ select.inp { appearance: none; cursor: pointer; }
 <div class="view" id="view-dashboard">
   <!-- 直近アラートパネル -->
   <div class="urgent-panel" id="urgentPanel"></div>
+  <!-- 作業開始アラートパネル -->
+  <div class="work-alert-panel" id="workAlertPanel" style="display:none"></div>
   <div class="cal-header">
     <button class="cal-nav-btn" onclick="calPrev()">‹</button>
     <span class="cal-title" id="calTitle"></span>
@@ -826,6 +871,10 @@ select.inp { appearance: none; cursor: pointer; }
 
     <label class="required">修理内容</label>
     <textarea id="f-repair" class="inp" placeholder="スラックス丈詰め 2cm"></textarea>
+
+    <label>🔧 作業開始予定日（時間がかかる補修のみ）</label>
+    <input type="date" id="f-start-date" class="inp">
+    <p style="font-size:11px;color:var(--muted);margin-top:4px;margin-bottom:4px;">※ 入力するとホーム画面の作業開始アラートに表示されます</p>
 
     <label>委託先</label>
     <select id="f-vendor" class="inp"></select>
@@ -920,6 +969,9 @@ select.inp { appearance: none; cursor: pointer; }
 
     <label class="required">修理内容</label>
     <textarea id="ep-repair" class="inp"></textarea>
+
+    <label>🔧 作業開始予定日（時間がかかる補修のみ）</label>
+    <input type="date" id="ep-start-date" class="inp">
 
     <label>委託先</label>
     <select id="ep-vendor" class="inp"></select>
@@ -1089,6 +1141,7 @@ function openEditPopup(id) {
   document.getElementById('ep-name').value = o.customerName || '';
   document.getElementById('ep-phone').value = o.phone || '';
   document.getElementById('ep-repair').value = o.repairContent || '';
+  document.getElementById('ep-start-date').value = o.startDate || '';
 
   // 委託先セレクト
   const sel = document.getElementById('ep-vendor');
@@ -1109,6 +1162,7 @@ function saveEditPopup() {
   const customerName = document.getElementById('ep-name').value.trim();
   const phone = document.getElementById('ep-phone').value.trim();
   const repairContent = document.getElementById('ep-repair').value.trim();
+  const startDate = document.getElementById('ep-start-date').value;
   const vendorId = document.getElementById('ep-vendor').value;
 
   if (!acceptDate) { showToast('⚠ 受付日を入力してください', 'warn'); return; }
@@ -1126,6 +1180,7 @@ function saveEditPopup() {
     customerName,
     phone,
     repairContent,
+    startDate,
     vendorId,
     updatedAt: new Date().toISOString()
   };
@@ -1233,6 +1288,53 @@ function dateDiff(ds) {
 }
 
 // 直近アラートパネル描画
+function renderWorkAlertPanel() {
+  const panel = document.getElementById('workAlertPanel');
+  if (!panel) return;
+
+  const weekdays = ['日','月','火','水','木','金','土'];
+
+  function formatDate(ds) {
+    if (!ds) return '';
+    const d = new Date(ds + 'T00:00:00');
+    return `${d.getMonth()+1}月${d.getDate()}日（${weekdays[d.getDay()]}）`;
+  }
+
+  const workOrders = orders.filter(o => {
+    if (isDone(o) || !o.startDate) return false;
+    const diff = dateDiff(o.startDate);
+    return diff >= 0 && diff <= 3;
+  }).sort((a,b) => a.startDate.localeCompare(b.startDate));
+
+  if (workOrders.length === 0) {
+    panel.style.display = 'none';
+    return;
+  }
+
+  panel.style.display = 'block';
+
+  const rows = workOrders.map(o => {
+    const diff = dateDiff(o.startDate);
+    let cls, badgeText;
+    if (diff === 0) { cls = 'wa-today'; badgeText = '本日開始を'; }
+    else if (diff === 1) { cls = 'wa-tomorrow'; badgeText = '明日開始を'; }
+    else { cls = 'wa-soon'; badgeText = `${diff}日後に開始を`; }
+
+    const pickupStr = o.pickupDate ? `納品 ${formatDate(o.pickupDate)}` : '';
+
+    return `<div class="work-alert-row ${cls}">
+      <span class="wa-badge ${cls}">${badgeText}</span>
+      <div class="wa-info">
+        <div class="wa-name">${esc(o.customerName)}</div>
+        <div class="wa-repair">${esc(o.repairContent)}</div>
+      </div>
+      <div class="wa-deadline">${pickupStr}</div>
+    </div>`;
+  }).join('');
+
+  panel.innerHTML = `<div class="work-alert-title">🔧 作業開始アラート</div>${rows}`;
+}
+
 function renderUrgentPanel() {
   const panel = document.getElementById('urgentPanel');
   if (!panel) return;
@@ -1302,6 +1404,7 @@ function calNext() { calMonth++; if(calMonth>11){calMonth=0;calYear++;} renderDa
 
 function renderDashboard() {
   renderUrgentPanel();
+  renderWorkAlertPanel();
   document.getElementById('calTitle').textContent = `${calYear}年${calMonth+1}月`;
 
   const first = new Date(calYear, calMonth, 1);
@@ -1560,6 +1663,7 @@ function initForm(id) {
     document.getElementById('f-name').value = o.customerName || '';
     document.getElementById('f-phone').value = o.phone || '';
     document.getElementById('f-repair').value = o.repairContent || '';
+    document.getElementById('f-start-date').value = o.startDate || '';
     document.getElementById('f-vendor').value = o.vendorId || 'shop';
   } else {
     // ★新規登録時：受付日に今日の日付を自動セット
@@ -1568,6 +1672,7 @@ function initForm(id) {
     document.getElementById('f-name').value = '';
     document.getElementById('f-phone').value = '';
     document.getElementById('f-repair').value = '';
+    document.getElementById('f-start-date').value = '';
     document.getElementById('f-vendor').value = 'shop';
   }
 }
@@ -1590,6 +1695,7 @@ function saveOrder() {
   const customerName = document.getElementById('f-name').value.trim();
   const phone = document.getElementById('f-phone').value.trim();
   const repairContent = document.getElementById('f-repair').value.trim();
+  const startDate = document.getElementById('f-start-date').value;
   const vendorId = document.getElementById('f-vendor').value;
 
   if (!acceptDate) { showToast('⚠ 受付日を入力してください', 'warn'); return; }
@@ -1602,11 +1708,12 @@ function saveOrder() {
 
   const order = {
     id,
-    acceptDate,        // ★受付日を追加
+    acceptDate,
     customerName,
     phone,
     repairContent,
     pickupDate,
+    startDate,
     vendorId,
     status: existing ? existing.status : '受付中',
     createdAt: existing ? existing.createdAt : new Date().toISOString(),
