@@ -694,6 +694,29 @@ select.inp { appearance: none; cursor: pointer; }
 .pickup-badge.tomorrow { background: var(--orange); color: #fff; }
 .pickup-badge.soon { background: var(--accent); color: #000; }
 
+/* 納品時間バッジ */
+.time-badge {
+  display: inline-block;
+  background: #fbbf24;
+  color: #7a4a00;
+  font-size: 12px;
+  font-weight: 900;
+  border-radius: 6px;
+  padding: 2px 10px;
+  white-space: nowrap;
+}
+.time-badge-sm {
+  display: inline-block;
+  background: #fbbf24;
+  color: #7a4a00;
+  font-size: 10px;
+  font-weight: 900;
+  border-radius: 4px;
+  padding: 1px 6px;
+  white-space: nowrap;
+  margin-top: 2px;
+}
+
 /* 作業開始アラートパネル */
 .work-alert-panel {
   background: var(--surface);
@@ -863,6 +886,21 @@ select.inp { appearance: none; cursor: pointer; }
     <label class="required">受取予定日</label>
     <input type="date" id="f-date" class="inp">
 
+    <label>🕐 納品時間</label>
+    <select id="f-time" class="inp">
+      <option value="">時間指定なし</option>
+      <option value="9:00">9:00以降</option>
+      <option value="10:00">10:00以降</option>
+      <option value="11:00">11:00以降</option>
+      <option value="12:00">12:00以降</option>
+      <option value="13:00">13:00以降</option>
+      <option value="14:00">14:00以降</option>
+      <option value="15:00">15:00以降</option>
+      <option value="16:00">16:00以降</option>
+      <option value="17:00">17:00以降</option>
+      <option value="18:00">18:00以降</option>
+    </select>
+
     <label class="required">お客様名</label>
     <input type="text" id="f-name" class="inp" placeholder="山田 花子">
 
@@ -960,6 +998,21 @@ select.inp { appearance: none; cursor: pointer; }
 
     <label class="required">受取予定日</label>
     <input type="date" id="ep-date" class="inp">
+
+    <label>🕐 納品時間</label>
+    <select id="ep-time" class="inp">
+      <option value="">時間指定なし</option>
+      <option value="9:00">9:00以降</option>
+      <option value="10:00">10:00以降</option>
+      <option value="11:00">11:00以降</option>
+      <option value="12:00">12:00以降</option>
+      <option value="13:00">13:00以降</option>
+      <option value="14:00">14:00以降</option>
+      <option value="15:00">15:00以降</option>
+      <option value="16:00">16:00以降</option>
+      <option value="17:00">17:00以降</option>
+      <option value="18:00">18:00以降</option>
+    </select>
 
     <label class="required">お客様名</label>
     <input type="text" id="ep-name" class="inp">
@@ -1138,6 +1191,7 @@ function openEditPopup(id) {
   document.getElementById('ep-id').value = id;
   document.getElementById('ep-accept-date').value = o.acceptDate || todayStr();
   document.getElementById('ep-date').value = o.pickupDate || '';
+  document.getElementById('ep-time').value = o.pickupTime || '';
   document.getElementById('ep-name').value = o.customerName || '';
   document.getElementById('ep-phone').value = o.phone || '';
   document.getElementById('ep-repair').value = o.repairContent || '';
@@ -1159,6 +1213,7 @@ function saveEditPopup() {
   const id = document.getElementById('ep-id').value;
   const acceptDate = document.getElementById('ep-accept-date').value;
   const pickupDate = document.getElementById('ep-date').value;
+  const pickupTime = document.getElementById('ep-time').value;
   const customerName = document.getElementById('ep-name').value.trim();
   const phone = document.getElementById('ep-phone').value.trim();
   const repairContent = document.getElementById('ep-repair').value.trim();
@@ -1180,6 +1235,7 @@ function saveEditPopup() {
     customerName,
     phone,
     repairContent,
+    pickupTime,
     startDate,
     vendorId,
     updatedAt: new Date().toISOString()
@@ -1260,6 +1316,7 @@ function renderSearchResults(q) {
     return `<div class="${itemCls}">
       <div class="list-date">
         <div>${mm}/${dd}(${dow})</div>
+        ${o.pickupTime ? `<span class="time-badge-sm">${esc(o.pickupTime)}〜</span>` : ''}
         ${pickupBadge}
       </div>
       <div class="list-info">
@@ -1276,6 +1333,15 @@ function renderSearchResults(q) {
 
   listEl.innerHTML = html;
   bindStatusBtns(listEl);
+}
+
+// ══════════════════════════════
+// 時間を数値化（ソート用）時間指定なしは最後に回す
+// ══════════════════════════════
+function timeToNum(t) {
+  if (!t) return 99;
+  const h = parseInt(t.split(':')[0], 10);
+  return isNaN(h) ? 99 : h;
 }
 
 // ══════════════════════════════
@@ -1433,12 +1499,14 @@ function renderDashboard() {
     if (isSel) cls += ' selected';
 
     let chips = '';
-    const pending = dayOrders.filter(o => !isDone(o));
-    const done = dayOrders.filter(o => isDone(o));
+    const sortedDay = [...dayOrders].sort((a,b) => timeToNum(a.pickupTime) - timeToNum(b.pickupTime));
+    const pending = sortedDay.filter(o => !isDone(o));
+    const done = sortedDay.filter(o => isDone(o));
     const showItems = [...pending, ...done].slice(0, 2);
     showItems.forEach(o => {
       const bg = isDone(o) ? '#27ae60' : '#e74c3c';
-      chips += `<div class="cal-chip" style="background:${bg}">${o.customerName} ${o.repairContent.slice(0,6)}...</div>`;
+      const timeLabel = o.pickupTime ? `🕐${o.pickupTime} ` : '';
+      chips += `<div class="cal-chip" style="background:${bg}">${timeLabel}${o.customerName} ${o.repairContent.slice(0,6)}...</div>`;
     });
     if (dayOrders.length > 2) chips += `<div class="cal-more">+${dayOrders.length-2}件</div>`;
 
@@ -1465,7 +1533,8 @@ function selectDate(ds) {
 }
 
 function renderDayDetail(ds) {
-  const dayOrders = orders.filter(o => o.pickupDate === ds);
+  const dayOrders = orders.filter(o => o.pickupDate === ds)
+    .sort((a,b) => timeToNum(a.pickupTime) - timeToNum(b.pickupTime));
   const today = todayStr();
   const d = new Date(ds + 'T00:00:00');
   const diff = Math.round((d - new Date(today + 'T00:00:00')) / 86400000);
@@ -1515,7 +1584,7 @@ function cardHTML(o) {
   return `<div class="card">
     <div class="card-header">
       <div>
-        <div class="customer-name">${esc(o.customerName)}</div>
+        <div class="customer-name">${esc(o.customerName)} ${o.pickupTime ? `<span class="time-badge">🕐 ${esc(o.pickupTime)}以降</span>` : ''}</div>
         ${o.phone ? `<div class="phone">${esc(o.phone)}</div>` : ''}
         ${acceptDateHtml}
       </div>
@@ -1593,7 +1662,11 @@ function renderList() {
   if (listFilter === 'pending') filtered = filtered.filter(o => !isDone(o));
   if (listFilter === 'done') filtered = filtered.filter(o => isDone(o));
 
-  filtered = [...filtered].sort((a,b) => (b.pickupDate||'').localeCompare(a.pickupDate||''));
+  filtered = [...filtered].sort((a,b) => {
+    const dateCmp = (b.pickupDate||'').localeCompare(a.pickupDate||'');
+    if (dateCmp !== 0) return dateCmp;
+    return timeToNum(a.pickupTime) - timeToNum(b.pickupTime);
+  });
 
   if (filtered.length === 0) {
     document.getElementById('list-items').innerHTML = '<p class="empty">データがありません</p>';
@@ -1628,6 +1701,7 @@ function renderList() {
     return `<div class="${itemCls}">
       <div class="list-date">
         <div>${mm}/${dd}</div>
+        ${o.pickupTime ? `<span class="time-badge-sm">${esc(o.pickupTime)}〜</span>` : ''}
         ${pickupBadge}
         ${acceptLabel ? `<div style="font-size:10px;color:var(--muted)">${acceptLabel}</div>` : ''}
       </div>
@@ -1660,6 +1734,7 @@ function initForm(id) {
     // ★受付日：既存データにあればセット、なければ今日
     document.getElementById('f-accept-date').value = o.acceptDate || todayStr();
     document.getElementById('f-date').value = o.pickupDate || '';
+    document.getElementById('f-time').value = o.pickupTime || '';
     document.getElementById('f-name').value = o.customerName || '';
     document.getElementById('f-phone').value = o.phone || '';
     document.getElementById('f-repair').value = o.repairContent || '';
@@ -1669,6 +1744,7 @@ function initForm(id) {
     // ★新規登録時：受付日に今日の日付を自動セット
     document.getElementById('f-accept-date').value = todayStr();
     document.getElementById('f-date').value = '';
+    document.getElementById('f-time').value = '';
     document.getElementById('f-name').value = '';
     document.getElementById('f-phone').value = '';
     document.getElementById('f-repair').value = '';
@@ -1692,6 +1768,7 @@ function renderVendorSelect() {
 function saveOrder() {
   const acceptDate = document.getElementById('f-accept-date').value;
   const pickupDate = document.getElementById('f-date').value;
+  const pickupTime = document.getElementById('f-time').value;
   const customerName = document.getElementById('f-name').value.trim();
   const phone = document.getElementById('f-phone').value.trim();
   const repairContent = document.getElementById('f-repair').value.trim();
@@ -1713,6 +1790,7 @@ function saveOrder() {
     phone,
     repairContent,
     pickupDate,
+    pickupTime,
     startDate,
     vendorId,
     status: existing ? existing.status : '受付中',
