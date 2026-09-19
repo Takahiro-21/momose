@@ -1032,6 +1032,7 @@ select.inp { appearance: none; cursor: pointer; }
     <input type="hidden" id="ep-id">
     <button class="btn-primary" onclick="saveEditPopup()">💾 保存する</button>
     <button class="btn-cancel" onclick="closeEditPopup()">キャンセル</button>
+    <button class="btn-cancel" style="border-color:var(--red);color:var(--red);margin-top:16px" onclick="deleteFromPopup()">🗑 この記録を削除する</button>
   </div>
 </div>
 
@@ -1207,6 +1208,16 @@ function openEditPopup(id) {
 
 function closeEditPopup() {
   document.getElementById('editPopupOverlay').classList.remove('active');
+}
+
+function deleteFromPopup() {
+  const id = document.getElementById('ep-id').value;
+  const o = orders.find(x => x.id === id);
+  if (!o) return;
+  if (!confirm(`${o.customerName}さんの記録を削除しますか？\nこの操作は取り消せません。`)) return;
+  fbDeleteOrder(id);
+  closeEditPopup();
+  showToast('🗑 削除しました', 'warn');
 }
 
 function saveEditPopup() {
