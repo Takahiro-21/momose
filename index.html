@@ -564,6 +564,68 @@ select.inp { appearance: none; cursor: pointer; }
 
 .required::after { content: ' *'; color: var(--red); }
 
+/* 登録前の出来上がり日の確認 */
+.pickup-confirm { text-align: center; border: 3px solid var(--accent); max-width: 560px; }
+.pc-label { font-size: 15px; color: var(--muted); font-weight: 700; margin-bottom: 6px; }
+.pc-date { font-size: 56px; font-weight: 900; color: var(--accent); line-height: 1.2; letter-spacing: 1px; }
+.pc-time { font-size: 32px; font-weight: 800; color: var(--text); margin-top: 6px; }
+.pc-diff { font-size: 18px; font-weight: 700; color: var(--blue); margin-top: 8px; }
+.pc-warn {
+  display: none;
+  background: rgba(251,146,60,0.18);
+  border: 2px solid var(--orange);
+  color: var(--orange);
+  border-radius: 10px;
+  padding: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  margin-top: 12px;
+  text-align: left;
+  white-space: pre-line;
+}
+.pc-detail {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-top: 14px;
+  text-align: left;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.pc-detail .pc-name { font-size: 18px; font-weight: 700; }
+.pc-detail .pc-repair { color: var(--muted); white-space: pre-wrap; margin-top: 4px; }
+@media (max-width: 480px) { .pc-date { font-size: 40px; } .pc-time { font-size: 26px; } }
+
+/* 伝票読み取りの確認表示 */
+.ocr-review {
+  display: none;
+  background: var(--surface2);
+  border: 2px solid var(--accent);
+  border-radius: 10px;
+  padding: 10px;
+  margin-bottom: 14px;
+}
+.ocr-review-title { font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 6px; }
+.ocr-review-sub { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+.ocr-photo {
+  display: block;
+  width: 100%;
+  max-height: 260px;
+  object-fit: contain;
+  background: #000;
+  border-radius: 8px;
+  cursor: zoom-in;
+}
+.ocr-photo.zoom { max-height: none; cursor: zoom-out; }
+.ocr-summary { font-size: 13px; font-weight: 700; margin-top: 8px; }
+.ocr-summary.ok { color: var(--green); }
+.ocr-summary.warn { color: var(--orange); }
+.inp.ocr-filled { border: 2px solid var(--accent); }
+.inp.ocr-warn { border: 2px solid var(--orange); background: rgba(251,146,60,0.12); }
+.ocr-note { font-size: 12px; color: var(--accent); margin-top: 4px; display: none; }
+.ocr-note.warn { color: var(--orange); font-weight: 700; }
+
 /* カード編集ポップアップ */
 .edit-popup-overlay {
   display: none;
@@ -879,12 +941,22 @@ select.inp { appearance: none; cursor: pointer; }
     <button class="ocr-btn" onclick="openOcrModal()">📷 伝票を写真で読み取る（自動入力）</button>
     <p style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:12px;">↑ 写真を撮るだけで下のフォームに自動入力されます</p>
 
+    <!-- 伝票読み取りの確認表示 -->
+    <div class="ocr-review" id="ocrReview">
+      <div class="ocr-review-title">📷 読み取った伝票（タップで拡大）</div>
+      <div class="ocr-review-sub">金色の枠＝AIが入力した項目、オレンジの枠＝要確認の項目です。伝票と見比べてから登録してください。</div>
+      <img class="ocr-photo" id="ocrPhoto" alt="読み取った伝票" onclick="this.classList.toggle('zoom')">
+      <div class="ocr-summary" id="ocrSummary"></div>
+      <div class="ocr-review-sub" id="ocrModelNote" style="margin:6px 0 0"></div>
+    </div>
+
     <!-- ★追加：受付日 -->
     <label class="required">受付日</label>
     <input type="date" id="f-accept-date" class="inp">
 
     <label class="required">受取予定日</label>
     <input type="date" id="f-date" class="inp">
+    <div class="ocr-note" id="note-f-date"></div>
 
     <label>🕐 納品時間</label>
     <select id="f-time" class="inp">
@@ -900,22 +972,31 @@ select.inp { appearance: none; cursor: pointer; }
       <option value="17:00">17:00以降</option>
       <option value="18:00">18:00以降</option>
     </select>
+    <div class="ocr-note" id="note-f-time"></div>
 
     <label class="required">お客様名</label>
     <input type="text" id="f-name" class="inp" placeholder="山田 花子">
+    <div class="ocr-note" id="note-f-name"></div>
 
     <label>電話番号</label>
     <input type="tel" id="f-phone" class="inp" placeholder="090-xxxx-xxxx">
+    <div class="ocr-note" id="note-f-phone"></div>
 
     <label class="required">修理内容</label>
     <textarea id="f-repair" class="inp" placeholder="スラックス丈詰め 2cm"></textarea>
+    <div class="ocr-note" id="note-f-repair"></div>
 
     <label>🔧 作業開始予定日（時間がかかる補修のみ）</label>
     <input type="date" id="f-start-date" class="inp">
     <p style="font-size:11px;color:var(--muted);margin-top:4px;margin-bottom:4px;">※ 入力するとホーム画面の作業開始アラートに表示されます</p>
 
     <label>委託先</label>
-    <select id="f-vendor" class="inp"></select>
+    <select id="f-vendor" class="inp" onchange="fillStatusSelect('f-status', this.value, document.getElementById('f-status').value)"></select>
+
+    <div id="f-status-wrap" style="display:none">
+      <label>📌 作業の状況（間違えて進めた時はここで戻せます）</label>
+      <select id="f-status" class="inp"></select>
+    </div>
 
     <input type="hidden" id="f-edit-id">
     <button class="btn-primary" onclick="saveOrder()">💾 登録する</button>
@@ -978,10 +1059,25 @@ select.inp { appearance: none; cursor: pointer; }
     </div>
     <div class="ocr-loading" id="ocr-loading">
       <div class="spinner"></div>
-      <p style="color:var(--muted)">読み取り中...</p>
+      <p style="color:var(--muted)">読み取り中...（手書きを丁寧に読むため、少し時間がかかります）</p>
     </div>
     <input type="file" id="ocr-input" accept="image/*" capture="environment" style="display:none" onchange="handleOcrImage(event)">
     <button class="btn-cancel" onclick="closeOcrModal()">キャンセル</button>
+  </div>
+</div>
+
+<!-- 登録前の出来上がり日の確認 -->
+<div class="modal-overlay" id="pickupConfirm">
+  <div class="modal pickup-confirm">
+    <div class="modal-title">📅 登録前の確認</div>
+    <div class="pc-label">出来上がり日（お渡し日）</div>
+    <div class="pc-date" id="pcDate"></div>
+    <div class="pc-time" id="pcTime"></div>
+    <div class="pc-diff" id="pcDiff"></div>
+    <div class="pc-warn" id="pcWarn"></div>
+    <div class="pc-detail" id="pcDetail"></div>
+    <button class="btn-primary" id="pcOk" onclick="confirmSaveOrder()">✅ この出来上がり日で登録する</button>
+    <button class="btn-cancel" onclick="closePickupConfirm()">✏️ 戻って直す</button>
   </div>
 </div>
 
@@ -1027,7 +1123,10 @@ select.inp { appearance: none; cursor: pointer; }
     <input type="date" id="ep-start-date" class="inp">
 
     <label>委託先</label>
-    <select id="ep-vendor" class="inp"></select>
+    <select id="ep-vendor" class="inp" onchange="fillStatusSelect('ep-status', this.value, document.getElementById('ep-status').value)"></select>
+
+    <label>📌 作業の状況（間違えて進めた時はここで戻せます）</label>
+    <select id="ep-status" class="inp"></select>
 
     <input type="hidden" id="ep-id">
     <button class="btn-primary" onclick="saveEditPopup()">💾 保存する</button>
@@ -1185,6 +1284,16 @@ function updateAlertBadge() {
 // ══════════════════════════════
 // カード編集ポップアップ
 // ══════════════════════════════
+// 作業の状況の選択肢を作る。店舗内作業と委託では選べる状況が違う。
+// 今の状況が選択肢に無い場合（委託先を替えた時など）は「受付中」に戻す
+function fillStatusSelect(selectId, vendorId, current) {
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+  const list = getStatuses(vendorId);
+  sel.innerHTML = list.map(st => `<option value="${st}">${st}</option>`).join('');
+  sel.value = list.includes(current) ? current : list[0];
+}
+
 function openEditPopup(id) {
   const o = orders.find(x => x.id === id);
   if (!o) return;
@@ -1202,6 +1311,7 @@ function openEditPopup(id) {
   const sel = document.getElementById('ep-vendor');
   sel.innerHTML = vendors.map(v => `<option value="${v.id}">${v.name}</option>`).join('');
   sel.value = o.vendorId || 'shop';
+  fillStatusSelect('ep-status', sel.value, o.status);
 
   document.getElementById('editPopupOverlay').classList.add('active');
 }
@@ -1230,6 +1340,7 @@ function saveEditPopup() {
   const repairContent = document.getElementById('ep-repair').value.trim();
   const startDate = document.getElementById('ep-start-date').value;
   const vendorId = document.getElementById('ep-vendor').value;
+  const status = document.getElementById('ep-status').value || '受付中';
 
   if (!acceptDate) { showToast('⚠ 受付日を入力してください', 'warn'); return; }
   if (!pickupDate) { showToast('⚠ 受取予定日を入力してください', 'warn'); return; }
@@ -1249,12 +1360,13 @@ function saveEditPopup() {
     pickupTime,
     startDate,
     vendorId,
+    status,
     updatedAt: new Date().toISOString()
   };
 
   fbSaveOrder(updated);
   closeEditPopup();
-  showToast('✅ 更新しました');
+  showToast(status !== existing.status ? `✅ 更新しました（状況：${existing.status} → ${status}）` : '✅ 更新しました');
 }
 
 // ポップアップ外タップで閉じる
@@ -1738,6 +1850,7 @@ function renderList() {
 function initForm(id) {
   editId = id;
   document.getElementById('f-edit-id').value = id || '';
+  clearOcrReview();
 
   if (id) {
     const o = orders.find(x => x.id === id);
@@ -1751,6 +1864,8 @@ function initForm(id) {
     document.getElementById('f-repair').value = o.repairContent || '';
     document.getElementById('f-start-date').value = o.startDate || '';
     document.getElementById('f-vendor').value = o.vendorId || 'shop';
+    fillStatusSelect('f-status', document.getElementById('f-vendor').value, o.status);
+    document.getElementById('f-status-wrap').style.display = 'block';
   } else {
     // ★新規登録時：受付日に今日の日付を自動セット
     document.getElementById('f-accept-date').value = todayStr();
@@ -1761,6 +1876,8 @@ function initForm(id) {
     document.getElementById('f-repair').value = '';
     document.getElementById('f-start-date').value = '';
     document.getElementById('f-vendor').value = 'shop';
+    fillStatusSelect('f-status', 'shop', '受付中');
+    document.getElementById('f-status-wrap').style.display = 'none';
   }
 }
 
@@ -1791,6 +1908,56 @@ function saveOrder() {
   if (!customerName) { showToast('⚠ お客様名を入力してください', 'warn'); return; }
   if (!repairContent) { showToast('⚠ 修理内容を入力してください', 'warn'); return; }
 
+  // 登録の前に、出来上がり日を大きく表示して確認してもらう
+  showPickupConfirm({ pickupDate, pickupTime, customerName, repairContent });
+}
+
+function showPickupConfirm(v) {
+  const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+  const d = new Date(v.pickupDate + 'T00:00:00');
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diff = Math.round((d - today) / 86400000);
+
+  document.getElementById('pcDate').textContent = `${d.getMonth() + 1}月${d.getDate()}日（${weekdays[d.getDay()]}）`;
+  document.getElementById('pcTime').textContent = v.pickupTime ? `🕐 ${v.pickupTime}以降` : '🕐 時間指定なし';
+  const yearNote = d.getFullYear() !== today.getFullYear() ? `${d.getFullYear()}年・` : '';
+  const diffText = diff === 0 ? '今日' : diff === 1 ? '明日' : diff > 1 ? `今日から ${diff} 日後` : `今日より ${Math.abs(diff)} 日前`;
+  document.getElementById('pcDiff').textContent = yearNote + diffText;
+
+  const warns = [];
+  if (diff < 0) warns.push('⚠ 過去の日付です');
+  if (d.getDay() === 0 || d.getDay() === 3) warns.push('⚠ 定休日（水曜・日曜）にあたります');
+  if (diff > 90) warns.push('⚠ 3か月以上先の日付です');
+  const pending = OCR_FIELD_IDS.filter(id => document.getElementById(id).classList.contains('ocr-warn'));
+  if (pending.length > 0) warns.push('⚠ 写真読み取りの「要確認」（オレンジの枠）がまだ残っています');
+  const warnEl = document.getElementById('pcWarn');
+  warnEl.textContent = warns.join('\n');
+  warnEl.style.display = warns.length > 0 ? 'block' : 'none';
+
+  document.getElementById('pcDetail').innerHTML =
+    `<div class="pc-name">${esc(v.customerName)} 様</div><div class="pc-repair">${esc(v.repairContent)}</div>`;
+  document.getElementById('pcOk').textContent = editId ? '✅ この出来上がり日で更新する' : '✅ この出来上がり日で登録する';
+  document.getElementById('pickupConfirm').classList.add('active');
+}
+
+function closePickupConfirm() {
+  document.getElementById('pickupConfirm').classList.remove('active');
+}
+
+function confirmSaveOrder() {
+  if (!document.getElementById('pickupConfirm').classList.contains('active')) return;   // 二度押し防止
+  closePickupConfirm();
+
+  const acceptDate = document.getElementById('f-accept-date').value;
+  const pickupDate = document.getElementById('f-date').value;
+  const pickupTime = document.getElementById('f-time').value;
+  const customerName = document.getElementById('f-name').value.trim();
+  const phone = document.getElementById('f-phone').value.trim();
+  const repairContent = document.getElementById('f-repair').value.trim();
+  const startDate = document.getElementById('f-start-date').value;
+  const vendorId = document.getElementById('f-vendor').value;
+
   const id = editId || newId();
   const existing = orders.find(o => o.id === id);
 
@@ -1804,7 +1971,7 @@ function saveOrder() {
     pickupTime,
     startDate,
     vendorId,
-    status: existing ? existing.status : '受付中',
+    status: existing ? (document.getElementById('f-status').value || existing.status) : '受付中',
     createdAt: existing ? existing.createdAt : new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
@@ -1929,7 +2096,7 @@ function compressImage(dataUrl) {
     img.onload = () => {
       const canvas = document.createElement('canvas');
       let {width, height} = img;
-      const maxDim = 1920;
+      const maxDim = 2576;
       if (width > maxDim || height > maxDim) {
         if (width > height) { height = Math.round(height * maxDim / width); width = maxDim; }
         else { width = Math.round(width * maxDim / height); height = maxDim; }
@@ -1946,6 +2113,273 @@ function compressImage(dataUrl) {
     };
     img.src = dataUrl;
   });
+}
+
+// ── 伝票読み取り：確認表示 ──
+const OCR_FIELD_IDS = ['f-date', 'f-time', 'f-name', 'f-phone', 'f-repair'];
+
+function clearOcrMark(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.remove('ocr-filled', 'ocr-warn');
+  const note = document.getElementById('note-' + id);
+  if (note) { note.style.display = 'none'; note.textContent = ''; note.classList.remove('warn'); }
+}
+
+function clearOcrReview() {
+  OCR_FIELD_IDS.forEach(clearOcrMark);
+  const panel = document.getElementById('ocrReview');
+  if (panel) panel.style.display = 'none';
+  const photo = document.getElementById('ocrPhoto');
+  if (photo) { photo.removeAttribute('src'); photo.classList.remove('zoom'); }
+  const modelNote = document.getElementById('ocrModelNote');
+  if (modelNote) modelNote.textContent = '';
+}
+
+// kind: 'filled'（AIが入力）/ 'warn'（要確認）
+function setOcrMark(id, kind, noteText) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.remove('ocr-filled', 'ocr-warn');
+  el.classList.add(kind === 'warn' ? 'ocr-warn' : 'ocr-filled');
+  const note = document.getElementById('note-' + id);
+  if (!note) return;
+  if (noteText) {
+    note.textContent = noteText;
+    note.classList.toggle('warn', kind === 'warn');
+    note.style.display = 'block';
+  } else {
+    note.style.display = 'none';
+  }
+}
+
+// スタッフが自分で直した項目は「確認済み」として枠を外す
+OCR_FIELD_IDS.forEach(id => {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const done = () => { clearOcrMark(id); updateOcrSummary(); };
+  el.addEventListener('input', done);
+  el.addEventListener('change', done);
+});
+
+function updateOcrSummary() {
+  const panel = document.getElementById('ocrReview');
+  const sum = document.getElementById('ocrSummary');
+  if (!panel || !sum || panel.style.display === 'none') return;
+  const warns = OCR_FIELD_IDS.filter(id => document.getElementById(id).classList.contains('ocr-warn')).length;
+  if (warns > 0) {
+    sum.className = 'ocr-summary warn';
+    sum.textContent = `⚠ 要確認が ${warns} 項目あります（オレンジの枠）。伝票を見て直してください。`;
+  } else {
+    sum.className = 'ocr-summary ok';
+    sum.textContent = '✅ 読み取り完了。金色の枠の項目を伝票と見比べてください。';
+  }
+}
+
+// ── 伝票読み取り：日付の計算（日本時間） ──
+function localDateStr(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// 伝票の「月・日」から年を補う。出来上がり日は未来の日付なので、
+// 年またぎ（例：12月に受けた1月渡し）も正しい年になるようにする
+function resolvePickupDate(month, day, base) {
+  const m = parseInt(month, 10), d = parseInt(day, 10);
+  if (!(m >= 1 && m <= 12 && d >= 1 && d <= 31)) return null;
+  const today = new Date(base.getFullYear(), base.getMonth(), base.getDate());
+  const y = today.getFullYear();
+  // 今年 → 来年 → 去年の順に、「31日前〜約11か月先」に入る年を採用する
+  for (const yy of [y, y + 1, y - 1]) {
+    const cand = new Date(yy, m - 1, d);
+    if (cand.getMonth() !== m - 1) continue;             // 2/30 など存在しない日
+    const diff = Math.round((cand - today) / 86400000);
+    if (diff >= -31 && diff <= 334) return cand;
+  }
+  return null;
+}
+
+// ── 伝票読み取り：AIへの依頼内容 ──
+const OCR_TOOL = {
+  name: 'record_slip',
+  description: '手書きの作業伝票から読み取った内容を記録する。読めない項目は推測せず null にする。',
+  input_schema: {
+    type: 'object',
+    properties: {
+      customerName: { type: ['string', 'null'], description: 'お客様名。伝票の表記のまま（カタカナならカタカナ）。「様」は除く' },
+      phone: { type: ['string', 'null'], description: '電話番号。数字とハイフンのみ' },
+      acceptDateText: { type: ['string', 'null'], description: '受付日・預り日として書かれている文字そのまま。無ければ null' },
+      pickupDateText: { type: ['string', 'null'], description: '出来上がり日（お渡し日）として書かれている文字そのまま。例「11/20(金)」' },
+      pickupMonth: { type: ['integer', 'null'], description: '出来上がり日の月（1〜12）' },
+      pickupDay: { type: ['integer', 'null'], description: '出来上がり日の日（1〜31）' },
+      pickupWeekday: { type: ['string', 'null'], description: '出来上がり日に曜日が書かれていれば 月火水木金土日 のいずれか1文字。無ければ null' },
+      pickupHour: { type: ['integer', 'null'], description: '受け取り時刻の「時」（24時間制の整数）。書かれていなければ null' },
+      repairContent: { type: ['string', 'null'], description: '修理内容。伝票に書かれた品名・色・作業内容・寸法をそのまま書き写す。複数ある場合は改行で区切る' },
+      uncertain: {
+        type: 'array',
+        description: '読み取りに少しでも自信がない項目',
+        items: { type: 'string', enum: ['customerName', 'phone', 'pickupDate', 'pickupTime', 'repairContent'] }
+      },
+      uncertainReason: { type: ['string', 'null'], description: '自信がない理由を短く。無ければ null' }
+    },
+    required: ['customerName', 'phone', 'acceptDateText', 'pickupDateText', 'pickupMonth', 'pickupDay',
+               'pickupWeekday', 'pickupHour', 'repairContent', 'uncertain', 'uncertainReason']
+  }
+};
+
+function buildOcrPrompt(base) {
+  const wd = ['日', '月', '火', '水', '木', '金', '土'][base.getDay()];
+  return `これは洋服お直し店「ファッションリフォーム・モモセ」の手書きの作業伝票の写真です。内容を読み取り、必ず record_slip ツールを呼び出して記録してください。
+
+今日は ${base.getFullYear()}年${base.getMonth() + 1}月${base.getDate()}日（${wd}）です。
+
+【出来上がり日（最重要）】
+・記録するのは、お客様に品物を渡す日です。伝票では「出来上がり」「仕上り」「お渡し」「お引取り」「納期」などの欄や言葉のそばに書かれています。
+・「受付日」「預り日」「ご来店日」など、品物を預かった日とは絶対に取り違えないでください。日付が2つあれば、欄の名前で判断し、判断できない場合は遅い方を出来上がり日とし、uncertain に pickupDate を入れてください。
+・伝票に書かれた月と日の数字だけを答えてください。年は答えなくて構いません。
+・手書きの数字は 1と7、3と8、0と6、4と9 を取り違えやすいので、曜日が書かれていれば曜日と合うか確認してください。
+・時刻（例「14時」「午後3時」「17:00」）が書かれていれば pickupHour に入れてください。
+
+【修理内容】
+・伝票に書かれた言葉をそのまま書き写してください。要約・言い換え・書かれていない内容の補足はしないでください。
+・この店でよく使う略語はそのまま残してください：PT（パンツ）、SK（スカート）、OP（ワンピース）、JK（ジャケット）など。
+・よく出る作業の例：すそ上げ、丈つめ、袖つめ、ウエストつめ、ウエスト出し、幅つめ、肩幅つめ、ファスナー交換、かけつぎ、ゴム交換、裏地交換、ほつれ直し、ボタン付け。
+・寸法の数字（例「2cm」「0.5」「股下72」）と枚数（例「2枚」）は特に正確に。読めない数字は「？」と書き、uncertain に repairContent を入れてください。
+・金額は修理内容に含めないでください。
+
+【共通の決まり】
+・読めない項目・書かれていない項目は推測で埋めず null にしてください。
+・少しでも自信がない項目は必ず uncertain に入れてください。間違ったまま入力されるより、要確認と伝える方が役に立ちます。`;
+}
+
+// 上から順に試す。先頭が使えない場合だけ次に進む
+const OCR_MODELS = [
+  { id: 'claude-fable-5-2', label: 'Fable 5.2（最高精度）', max_tokens: 8000, extra: { output_config: { effort: 'medium' } } },
+  { id: 'claude-sonnet-5-5', label: 'Sonnet 5.5（予備）', max_tokens: 8000, extra: { output_config: { effort: 'medium' } } },
+  { id: 'claude-sonnet-5', label: 'Sonnet 5（予備）', max_tokens: 2048, extra: {} },
+  { id: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5（予備・精度低め）', max_tokens: 2048, extra: {} }
+];
+
+async function callOcrApi(apiKey, base64, base) {
+  let lastErr = null;
+  for (const m of OCR_MODELS) {
+    const body = Object.assign({
+      model: m.id,
+      max_tokens: m.max_tokens,
+      tools: [OCR_TOOL],
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: base64 } },
+          { type: 'text', text: buildOcrPrompt(base) }
+        ]
+      }]
+    }, m.extra);
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify(body)
+    });
+    let data;
+    try {
+      data = await response.json();
+    } catch (e) {
+      lastErr = new Error('AIから正しい返答がありませんでした（混雑の可能性）');
+      continue;
+    }
+    if (data.error) {
+      lastErr = new Error(data.error.message || '読み取りに失敗しました');
+      // APIキーの誤りは別のAIに替えても直らないので、すぐ知らせる
+      if (data.error.type === 'authentication_error') throw lastErr;
+      continue;
+    }
+    const result = extractOcrResult(data);
+    if (result) return { result, model: m.id, label: m.label };
+    lastErr = new Error('AIの返答を読み取れませんでした');
+  }
+  throw lastErr || new Error('読み取りに失敗しました');
+}
+
+function extractOcrResult(data) {
+  const blocks = data.content || [];
+  const tool = blocks.find(b => b.type === 'tool_use' && b.input);
+  if (tool) return tool.input;
+  // ツールを使わず文章で返ってきた場合の保険
+  const text = blocks.filter(b => b.type === 'text').map(b => b.text).join('\n');
+  const match = text.match(/\{[\s\S]*\}/);
+  if (!match) return null;
+  try { return JSON.parse(match[0]); } catch (e) { return null; }
+}
+
+// ── 伝票読み取り：結果をフォームに入れる ──
+function applyOcrResult(r, photoSrc, base) {
+  clearOcrReview();
+  const uncertain = Array.isArray(r.uncertain) ? r.uncertain : [];
+  const reason = r.uncertainReason ? `（${r.uncertainReason}）` : '';
+  const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+
+  // 出来上がり日
+  const raw = r.pickupDateText ? `伝票の記載「${r.pickupDateText}」` : '';
+  const pickup = resolvePickupDate(r.pickupMonth, r.pickupDay, base);
+  if (pickup) {
+    document.getElementById('f-date').value = localDateStr(pickup);
+    const label = `${pickup.getFullYear()}年${pickup.getMonth() + 1}月${pickup.getDate()}日（${weekdays[pickup.getDay()]}）`;
+    const today = new Date(base.getFullYear(), base.getMonth(), base.getDate());
+    const problems = [];
+    if (r.pickupWeekday && weekdays.includes(r.pickupWeekday) && r.pickupWeekday !== weekdays[pickup.getDay()]) {
+      problems.push(`伝票の曜日は「${r.pickupWeekday}」ですが、この日付は「${weekdays[pickup.getDay()]}」曜日です`);
+    }
+    if (pickup.getDay() === 0 || pickup.getDay() === 3) problems.push('定休日（水曜・日曜）にあたります');
+    if (pickup < today) problems.push('過去の日付です');
+    if (uncertain.includes('pickupDate')) problems.push('AIが読み取りに自信なし' + reason);
+    if (problems.length > 0) {
+      setOcrMark('f-date', 'warn', `⚠ ${label}　${raw}　→ ${problems.join('／')}。伝票を見て確認してください。`);
+    } else {
+      setOcrMark('f-date', 'filled', `${label}　${raw}`);
+    }
+  } else {
+    document.getElementById('f-date').value = '';
+    setOcrMark('f-date', 'warn', `⚠ 出来上がり日を読み取れませんでした。${raw}　伝票を見て入力してください。`);
+  }
+
+  // 納品時間
+  const hour = parseInt(r.pickupHour, 10);
+  if (hour >= 9 && hour <= 18) {
+    document.getElementById('f-time').value = `${hour}:00`;
+    setOcrMark('f-time', uncertain.includes('pickupTime') ? 'warn' : 'filled',
+      uncertain.includes('pickupTime') ? '⚠ AIが読み取りに自信なし' + reason + '。伝票を見て確認してください。' : '');
+  } else if (!isNaN(hour)) {
+    setOcrMark('f-time', 'warn', `⚠ 伝票の時刻「${hour}時」は選択肢（9時〜18時）にありません。選び直してください。`);
+  }
+
+  // お客様名・電話番号・修理内容
+  const textFields = [
+    { id: 'f-name', key: 'customerName', value: r.customerName, label: 'お客様名', required: true },
+    { id: 'f-phone', key: 'phone', value: r.phone, label: '電話番号', required: false },
+    { id: 'f-repair', key: 'repairContent', value: r.repairContent, label: '修理内容', required: true }
+  ];
+  textFields.forEach(f => {
+    const value = (f.value === null || f.value === undefined) ? '' : String(f.value).trim();
+    document.getElementById(f.id).value = value;
+    if (!value) {
+      if (f.required) setOcrMark(f.id, 'warn', `⚠ ${f.label}を読み取れませんでした。伝票を見て入力してください。`);
+      return;
+    }
+    if (uncertain.includes(f.key) || value.includes('？') || value.includes('?')) {
+      setOcrMark(f.id, 'warn', '⚠ AIが読み取りに自信なし' + reason + '。伝票を見て確認してください。');
+    } else {
+      setOcrMark(f.id, 'filled', '');
+    }
+  });
+
+  // 伝票の写真を残して見比べられるようにする
+  document.getElementById('ocrPhoto').src = photoSrc;
+  document.getElementById('ocrReview').style.display = 'block';
+  updateOcrSummary();
 }
 
 async function handleOcrImage(event) {
@@ -1967,44 +2401,14 @@ async function handleOcrImage(event) {
 
     try {
       const base64 = await compressImage(e.target.result);
-      const today = new Date();
-      const yyyy = today.getFullYear();
-
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': CLAUDE_API_KEY,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true'
-        },
-        body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 1024,
-          messages: [{
-            role: 'user',
-            content: [
-              { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: base64 } },
-              { type: 'text', text: `この洋服お直し店の作業伝票を読み取って、以下の形式でJSONのみを返してください。年は${yyyy}年として解釈してください。{"customerName":"お客様名（様は除く）","phone":"電話番号","repairContent":"修理内容","pickupDate":"受取予定日をYYYY-MM-DD形式で"}` }
-            ]
-          }]
-        })
-      });
-
-      const data = await response.json();
-      if (data.error) throw new Error(data.error.message);
-      const text = data.content?.[0]?.text || '';
-      const clean = text.replace(/```json|```/g, '').trim();
-      const parsed = JSON.parse(clean);
-
-      if (parsed.pickupDate) document.getElementById('f-date').value = parsed.pickupDate;
-      if (parsed.customerName) document.getElementById('f-name').value = parsed.customerName;
-      if (parsed.phone) document.getElementById('f-phone').value = parsed.phone;
-      if (parsed.repairContent) document.getElementById('f-repair').value = parsed.repairContent;
-      // ★OCR後も受付日は今日のまま（自動設定済み）
+      const base = new Date();
+      const { result, label } = await callOcrApi(CLAUDE_API_KEY, base64, base);
+      applyOcrResult(result, 'data:image/jpeg;base64,' + base64, base);
+      document.getElementById('ocrModelNote').textContent = '読み取りAI：' + label;
 
       closeOcrModal();
-      showToast('✅ 読み取り完了！内容を確認してください');
+      const hasWarn = OCR_FIELD_IDS.some(id => document.getElementById(id).classList.contains('ocr-warn'));
+      showToast(hasWarn ? '⚠ 読み取り完了。オレンジの項目を確認してください' : '✅ 読み取り完了！金色の項目を伝票と見比べてください', hasWarn ? 'warn' : 'ok');
 
     } catch(err) {
       document.getElementById('ocr-upload-area').style.display = 'block';
