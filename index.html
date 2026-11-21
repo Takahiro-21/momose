@@ -8,7 +8,7 @@
 <!-- Firebase SDK -->
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-  import { getFirestore, collection, doc, setDoc, getDocs, deleteDoc, onSnapshot, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+  import { getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc, onSnapshot, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
   const firebaseConfig = {
     apiKey: "AIzaSyCMA5Bm10rvziDOtrflhnVDH6FPwss_43A",
@@ -27,6 +27,7 @@
   window.fsDoc = doc;
   window.fsSetDoc = setDoc;
   window.fsGetDocs = getDocs;
+  window.fsGetDoc = getDoc;
   window.fsDeleteDoc = deleteDoc;
   window.fsOnSnapshot = onSnapshot;
   window.fsQuery = query;
@@ -567,7 +568,8 @@ select.inp { appearance: none; cursor: pointer; }
 /* 登録前の出来上がり日の確認 */
 .pickup-confirm { text-align: center; border: 3px solid var(--accent); max-width: 560px; }
 .pc-label { font-size: 15px; color: var(--muted); font-weight: 700; margin-bottom: 6px; }
-.pc-date { font-size: 56px; font-weight: 900; color: var(--accent); line-height: 1.2; letter-spacing: 1px; }
+.pc-date { font-size: 42px; font-weight: 900; color: var(--accent); line-height: 1.25; letter-spacing: 1px; }
+.pc-handover { font-size: 22px; font-weight: 800; color: var(--text); margin-top: 2px; }
 .pc-time { font-size: 32px; font-weight: 800; color: var(--text); margin-top: 6px; }
 .pc-diff { font-size: 18px; font-weight: 700; color: var(--blue); margin-top: 8px; }
 .pc-warn {
@@ -595,7 +597,33 @@ select.inp { appearance: none; cursor: pointer; }
 }
 .pc-detail .pc-name { font-size: 18px; font-weight: 700; }
 .pc-detail .pc-repair { color: var(--muted); white-space: pre-wrap; margin-top: 4px; }
-@media (max-width: 480px) { .pc-date { font-size: 40px; } .pc-time { font-size: 26px; } }
+@media (max-width: 480px) { .pc-date { font-size: 28px; } .pc-handover { font-size: 18px; } .pc-time { font-size: 24px; } }
+
+/* 伝票写真を見る画面 */
+.slip-viewer { align-items: flex-start; padding: 12px; overflow-y: auto; }
+.slip-viewer-box { background: var(--surface); border-radius: 14px; padding: 12px; width: 100%; max-width: 900px; margin: 0 auto; }
+.slip-viewer-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.slip-viewer-title { font-size: 16px; font-weight: 700; }
+.slip-viewer-sub { font-size: 13px; color: var(--muted); margin-bottom: 8px; white-space: pre-wrap; }
+.slip-viewer-img { display: block; width: 100%; border-radius: 8px; background: #000; cursor: zoom-in; }
+.slip-viewer-img.zoom { width: 200%; max-width: none; cursor: zoom-out; }
+.slip-viewer-scroll { overflow: auto; border-radius: 8px; }
+.slip-viewer-msg { text-align: center; color: var(--muted); padding: 40px 0; font-size: 14px; }
+.photo-btn {
+  background: rgba(251,191,36,0.15);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+  white-space: nowrap;
+}
+.ep-photo-row { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+.ep-photo-row .photo-btn { padding: 8px 12px; font-size: 13px; }
 
 /* 伝票読み取りの確認表示 */
 .ocr-review {
@@ -943,11 +971,9 @@ select.inp { appearance: none; cursor: pointer; }
 
     <!-- 伝票読み取りの確認表示 -->
     <div class="ocr-review" id="ocrReview">
-      <div class="ocr-review-title">📷 読み取った伝票（タップで拡大）</div>
-      <div class="ocr-review-sub">金色の枠＝AIが入力した項目、オレンジの枠＝要確認の項目です。伝票と見比べてから登録してください。</div>
-      <img class="ocr-photo" id="ocrPhoto" alt="読み取った伝票" onclick="this.classList.toggle('zoom')">
-      <div class="ocr-summary" id="ocrSummary"></div>
-      <div class="ocr-review-sub" id="ocrModelNote" style="margin:6px 0 0"></div>
+      <div class="ocr-review-title">📷 伝票の写真（タップで拡大）</div>
+      <div class="ocr-review-sub">この写真は登録と一緒に保存され、あとからカードの「📷 伝票」で見られます。</div>
+      <img class="ocr-photo" id="ocrPhoto" alt="伝票の写真" onclick="this.classList.toggle('zoom')">
     </div>
 
     <!-- ★追加：受付日 -->
@@ -983,7 +1009,7 @@ select.inp { appearance: none; cursor: pointer; }
     <div class="ocr-note" id="note-f-phone"></div>
 
     <label class="required">修理内容</label>
-    <textarea id="f-repair" class="inp" placeholder="スラックス丈詰め 2cm"></textarea>
+    <textarea id="f-repair" class="inp" placeholder="スラックス丈詰め 2cm（伝票の写真があれば空欄でも登録できます）"></textarea>
     <div class="ocr-note" id="note-f-repair"></div>
 
     <label>🔧 作業開始予定日（時間がかかる補修のみ）</label>
@@ -1039,6 +1065,13 @@ select.inp { appearance: none; cursor: pointer; }
     <button class="btn-cancel" onclick="goto('dashboard')">キャンセル</button>
   </div>
   <div class="setting-card">
+    <div style="font-size:14px;font-weight:700;margin-bottom:8px;">📷 伝票写真の保存先（Googleドライブ）</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:8px;">Googleドライブ用スクリプトのURLを貼り付けて保存してください。1台で設定すれば全ての端末に反映されます。</p>
+    <input type="url" id="s-photo-url" class="inp" placeholder="https://script.google.com/macros/s/.../exec">
+    <p id="s-photo-status" style="font-size:13px;margin-top:8px;color:var(--muted);"></p>
+    <button class="btn-primary" onclick="savePhotoStoreUrl()">💾 保存して接続テスト</button>
+  </div>
+  <div class="setting-card">
     <div style="font-size:14px;font-weight:700;margin-bottom:8px;">📊 データ移行</div>
     <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">スプレッドシートのデータをFirebaseにインポートできます。</p>
     <button class="btn-primary" style="background:var(--orange)" onclick="importFromSheet()">📥 スプシからインポート</button>
@@ -1070,8 +1103,9 @@ select.inp { appearance: none; cursor: pointer; }
 <div class="modal-overlay" id="pickupConfirm">
   <div class="modal pickup-confirm">
     <div class="modal-title">📅 登録前の確認</div>
-    <div class="pc-label">出来上がり日（お渡し日）</div>
+    <div class="pc-label">お受け渡し日</div>
     <div class="pc-date" id="pcDate"></div>
+    <div class="pc-handover">にお受け渡し</div>
     <div class="pc-time" id="pcTime"></div>
     <div class="pc-diff" id="pcDiff"></div>
     <div class="pc-warn" id="pcWarn"></div>
@@ -1119,6 +1153,13 @@ select.inp { appearance: none; cursor: pointer; }
     <label class="required">修理内容</label>
     <textarea id="ep-repair" class="inp"></textarea>
 
+    <label>📷 伝票の写真</label>
+    <div class="ep-photo-row">
+      <button class="photo-btn" id="ep-photo-view" onclick="openSlipPhoto(document.getElementById('ep-id').value)">📷 写真を見る</button>
+      <button class="photo-btn" id="ep-photo-add" onclick="document.getElementById('ep-photo-input').click()">📷 伝票の写真を追加</button>
+    </div>
+    <input type="file" id="ep-photo-input" accept="image/*" capture="environment" style="display:none" onchange="handleEditPhoto(event)">
+
     <label>🔧 作業開始予定日（時間がかかる補修のみ）</label>
     <input type="date" id="ep-start-date" class="inp">
 
@@ -1132,6 +1173,22 @@ select.inp { appearance: none; cursor: pointer; }
     <button class="btn-primary" onclick="saveEditPopup()">💾 保存する</button>
     <button class="btn-cancel" onclick="closeEditPopup()">キャンセル</button>
     <button class="btn-cancel" style="border-color:var(--red);color:var(--red);margin-top:16px" onclick="deleteFromPopup()">🗑 この記録を削除する</button>
+  </div>
+</div>
+
+<!-- 伝票の写真を見る画面 -->
+<div class="modal-overlay slip-viewer" id="slipViewer">
+  <div class="slip-viewer-box">
+    <div class="slip-viewer-head">
+      <div class="slip-viewer-title" id="slipViewerTitle">📷 伝票の写真</div>
+      <button class="edit-popup-close" onclick="closeSlipPhoto()">✕</button>
+    </div>
+    <div class="slip-viewer-sub" id="slipViewerSub"></div>
+    <div class="slip-viewer-msg" id="slipViewerMsg"></div>
+    <div class="slip-viewer-scroll">
+      <img class="slip-viewer-img" id="slipViewerImg" alt="伝票の写真" onclick="this.classList.toggle('zoom')">
+    </div>
+    <button class="btn-cancel" onclick="closeSlipPhoto()">閉じる</button>
   </div>
 </div>
 
@@ -1183,11 +1240,185 @@ async function fbSaveOrder(order) {
 
 async function fbDeleteOrder(id) {
   if (!window.db) return;
+  const target = orders.find(o => o.id === id);
   try {
     await window.fsDeleteDoc(window.fsDoc(window.db, 'orders', id));
   } catch(e) {
     showToast('⚠ 削除エラー: ' + e.message, 'err');
+    return;
   }
+  // 伝票の写真も一緒に消す（ドライブの写真はゴミ箱へ移すので、30日以内なら戻せる）
+  if (target && target.photoFileId && photoStoreUrl) {
+    try { await callPhotoStore({ action: 'delete', fileId: target.photoFileId }); } catch(e) { console.warn('ドライブ写真削除エラー:', e); }
+  }
+  try { await window.fsDeleteDoc(window.fsDoc(window.db, 'slipPhotos', id)); } catch(e) { console.warn('写真削除エラー:', e); }
+  delete slipPhotoCache[id];
+}
+
+// ══════════════════════════════
+// 伝票の写真（受付記録とは別の場所に保存し、見る時だけ読み込む）
+// ══════════════════════════════
+const SLIP_PHOTO_REPAIR_TEXT = '📷 伝票写真を参照';
+let pendingSlipPhoto = null;      // 受付画面で撮った、まだ保存していない写真
+const slipPhotoCache = {};
+let photoStoreUrl = '';           // 写真の保存先（GoogleドライブのスクリプトURL）。全端末共通で設定に保存
+
+// Googleドライブの保存用スクリプトに依頼する
+async function callPhotoStore(payload, timeoutMs = 60000) {
+  if (!photoStoreUrl) throw new Error('写真の保存先が設定されていません');
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    // 本文はテキストとして送る（Googleのスクリプトに余計な事前確認をさせないため）
+    const res = await fetch(photoStoreUrl, { method: 'POST', body: JSON.stringify(payload), signal: ctrl.signal });
+    let data;
+    try { data = await res.json(); } catch(e) { throw new Error('保存先から正しい返事がありません。設定のURLを確認してください'); }
+    if (!data.ok) throw new Error(data.error || '保存先でエラーが起きました');
+    return data;
+  } catch(e) {
+    if (e.name === 'AbortError') throw new Error('保存先の応答がありません（時間切れ）');
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// 写真を保存する。戻り値：{ ok, fileId }（fileId があればドライブ、無ければFirebaseに保存）
+async function fbSaveSlipPhoto(id, dataUrl, meta = {}) {
+  if (photoStoreUrl) {
+    try {
+      const r = await callPhotoStore({ action: 'save', id, data: dataUrl, name: meta.name || '', date: meta.date || '' });
+      slipPhotoCache[id] = dataUrl;
+      // 以前Firebaseに保存していた写真があれば消して、無料枠を空ける
+      if (window.db) { try { await window.fsDeleteDoc(window.fsDoc(window.db, 'slipPhotos', id)); } catch(e) {} }
+      return { ok: true, fileId: r.fileId };
+    } catch(e) {
+      showToast('⚠ ドライブに保存できなかったため、Firebaseに保存します（' + e.message + '）', 'warn');
+    }
+  }
+  if (!window.db) return { ok: false };
+  try {
+    await window.fsSetDoc(window.fsDoc(window.db, 'slipPhotos', id), { data: dataUrl, savedAt: new Date().toISOString() });
+    slipPhotoCache[id] = dataUrl;
+    return { ok: true, fileId: null };
+  } catch(e) {
+    showToast('⚠ 写真の保存エラー: ' + e.message, 'err');
+    return { ok: false };
+  }
+}
+
+// 写真を保存し終えたら、受付記録に保存先を書き込む
+async function attachPhotoToOrder(id, dataUrl, meta, fallbackHasPhoto) {
+  const r = await fbSaveSlipPhoto(id, dataUrl, meta);
+  const latest = orders.find(o => o.id === id);
+  if (!latest) return r.ok;
+  const updated = { ...latest, updatedAt: new Date().toISOString() };
+  if (r.ok) {
+    updated.hasPhoto = true;
+    updated.photoFileId = r.fileId || null;
+  } else {
+    updated.hasPhoto = !!fallbackHasPhoto;
+  }
+  orders = orders.map(o => o.id === id ? updated : o);
+  fbSaveOrder(updated);
+  return r.ok;
+}
+
+// 保存用に写真を小さくする（1件の保存上限1MBに収め、無料枠を長く使うため）
+function makeSlipPhoto(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const tries = [[1600, 0.7], [1400, 0.62], [1200, 0.55], [1000, 0.5]];
+      for (const [maxDim, q] of tries) {
+        let { width, height } = img;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) { height = Math.round(height * maxDim / width); width = maxDim; }
+          else { width = Math.round(width * maxDim / height); height = maxDim; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        const out = canvas.toDataURL('image/jpeg', q);
+        if (out.length < 600000) { resolve(out); return; }
+      }
+      reject(new Error('写真が大きすぎます'));
+    };
+    img.onerror = () => reject(new Error('写真を読み込めませんでした'));
+    img.src = dataUrl;
+  });
+}
+
+async function openSlipPhoto(id) {
+  const o = orders.find(x => x.id === id);
+  const viewer = document.getElementById('slipViewer');
+  const img = document.getElementById('slipViewerImg');
+  const msg = document.getElementById('slipViewerMsg');
+  document.getElementById('slipViewerTitle').textContent = o ? `📷 ${o.customerName} 様の伝票` : '📷 伝票の写真';
+  document.getElementById('slipViewerSub').textContent = o ? o.repairContent : '';
+  img.style.display = 'none';
+  img.classList.remove('zoom');
+  img.removeAttribute('src');
+  msg.textContent = '写真を読み込み中...';
+  msg.style.display = 'block';
+  viewer.classList.add('active');
+
+  try {
+    let data = slipPhotoCache[id];
+    if (!data && o && o.photoFileId) {
+      const r = await callPhotoStore({ action: 'get', fileId: o.photoFileId });
+      data = r.data;
+    }
+    if (!data) {
+      const snap = await window.fsGetDoc(window.fsDoc(window.db, 'slipPhotos', id));
+      data = snap.exists() ? snap.data().data : null;
+    }
+    if (data) slipPhotoCache[id] = data;
+    if (!document.getElementById('slipViewer').classList.contains('active')) return;
+    if (!data) { msg.textContent = '写真が見つかりません。保存中の場合は、少し待ってから開き直してください'; return; }
+    img.src = data;
+    img.style.display = 'block';
+    msg.style.display = 'none';
+  } catch(e) {
+    msg.textContent = '写真を読み込めませんでした：' + e.message;
+  }
+}
+
+function closeSlipPhoto() {
+  document.getElementById('slipViewer').classList.remove('active');
+}
+
+// 編集画面から、写真を追加・撮り直す
+async function handleEditPhoto(event) {
+  const file = event.target.files[0];
+  event.target.value = '';
+  if (!file) return;
+  const id = document.getElementById('ep-id').value;
+  const o = orders.find(x => x.id === id);
+  if (!o) return;
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      showToast('📷 写真を保存中...', 'ok');
+      const photo = await makeSlipPhoto(e.target.result);
+      const ok = await attachPhotoToOrder(id, photo, { name: o.customerName, date: o.pickupDate }, o.hasPhoto);
+      if (!ok) return;
+      updateEditPhotoButtons(true);
+      showToast('✅ 伝票の写真を保存しました');
+    } catch(err) {
+      showToast('⚠ ' + err.message, 'err');
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+function updateEditPhotoButtons(hasPhoto) {
+  document.getElementById('ep-photo-view').style.display = hasPhoto ? 'inline-block' : 'none';
+  document.getElementById('ep-photo-add').textContent = hasPhoto ? '📷 写真を撮り直す' : '📷 伝票の写真を追加';
+}
+
+function photoBtnHTML(o) {
+  return o.hasPhoto ? `<button class="photo-btn" onclick="openSlipPhoto('${o.id}')">📷 伝票</button>` : '';
 }
 
 async function fbSaveVendors() {
@@ -1208,6 +1439,9 @@ async function loadVendors() {
         vendors = d.data().list;
         renderVendors();
         renderVendorSelect();
+      }
+      if (d.id === 'photoStore') {
+        photoStoreUrl = d.data().url || '';
       }
     });
   } catch(e) { console.warn('委託先読み込みエラー:', e); }
@@ -1312,6 +1546,7 @@ function openEditPopup(id) {
   sel.innerHTML = vendors.map(v => `<option value="${v.id}">${v.name}</option>`).join('');
   sel.value = o.vendorId || 'shop';
   fillStatusSelect('ep-status', sel.value, o.status);
+  updateEditPhotoButtons(!!o.hasPhoto);
 
   document.getElementById('editPopupOverlay').classList.add('active');
 }
@@ -1345,10 +1580,9 @@ function saveEditPopup() {
   if (!acceptDate) { showToast('⚠ 受付日を入力してください', 'warn'); return; }
   if (!pickupDate) { showToast('⚠ 受取予定日を入力してください', 'warn'); return; }
   if (!customerName) { showToast('⚠ お客様名を入力してください', 'warn'); return; }
-  if (!repairContent) { showToast('⚠ 修理内容を入力してください', 'warn'); return; }
-
   const existing = orders.find(o => o.id === id);
   if (!existing) return;
+  if (!repairContent && !existing.hasPhoto) { showToast('⚠ 修理内容を入力するか、伝票の写真を追加してください', 'warn'); return; }
 
   const updated = {
     ...existing,
@@ -1356,7 +1590,7 @@ function saveEditPopup() {
     pickupDate,
     customerName,
     phone,
-    repairContent,
+    repairContent: repairContent || SLIP_PHOTO_REPAIR_TEXT,
     pickupTime,
     startDate,
     vendorId,
@@ -1448,6 +1682,7 @@ function renderSearchResults(q) {
       </div>
       <div class="list-actions">
         ${statusBtn}
+        ${photoBtnHTML(o)}
         <button class="edit-btn" onclick="clearHeaderSearch();startEdit('${o.id}')">編集</button>
         <button class="del-btn" onclick="deleteOrder('${o.id}')">削除</button>
       </div>
@@ -1717,7 +1952,7 @@ function cardHTML(o) {
     <div class="tags">
       <span class="tag" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border)">🏭 ${esc(vendorName)}</span>
       <span class="tag" style="background:${statusColor}">${esc(o.status)}</span>
-      <button class="edit-btn" style="margin-left:auto" onclick="openEditPopup('${o.id}')">✏️ 編集</button>
+      <span style="margin-left:auto;display:flex;gap:6px">${photoBtnHTML(o)}<button class="edit-btn" onclick="openEditPopup('${o.id}')">✏️ 編集</button></span>
     </div>
   </div>`;
 }
@@ -1834,6 +2069,7 @@ function renderList() {
       </div>
       <div class="list-actions">
         ${statusBtn}
+        ${photoBtnHTML(o)}
         <button class="edit-btn" onclick="startEdit('${o.id}')">編集</button>
         <button class="del-btn" onclick="deleteOrder('${o.id}')">削除</button>
       </div>
@@ -1906,10 +2142,12 @@ function saveOrder() {
   if (!acceptDate) { showToast('⚠ 受付日を入力してください', 'warn'); return; }
   if (!pickupDate) { showToast('⚠ 受取予定日を入力してください', 'warn'); return; }
   if (!customerName) { showToast('⚠ お客様名を入力してください', 'warn'); return; }
-  if (!repairContent) { showToast('⚠ 修理内容を入力してください', 'warn'); return; }
+  const editing = editId ? orders.find(o => o.id === editId) : null;
+  const hasPhoto = !!pendingSlipPhoto || !!(editing && editing.hasPhoto);
+  if (!repairContent && !hasPhoto) { showToast('⚠ 修理内容を入力するか、伝票の写真を撮ってください', 'warn'); return; }
 
   // 登録の前に、出来上がり日を大きく表示して確認してもらう
-  showPickupConfirm({ pickupDate, pickupTime, customerName, repairContent });
+  showPickupConfirm({ pickupDate, pickupTime, customerName, repairContent, hasPhoto });
 }
 
 function showPickupConfirm(v) {
@@ -1919,24 +2157,23 @@ function showPickupConfirm(v) {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const diff = Math.round((d - today) / 86400000);
 
-  document.getElementById('pcDate').textContent = `${d.getMonth() + 1}月${d.getDate()}日（${weekdays[d.getDay()]}）`;
+  document.getElementById('pcDate').textContent = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日（${weekdays[d.getDay()]}）`;
   document.getElementById('pcTime').textContent = v.pickupTime ? `🕐 ${v.pickupTime}以降` : '🕐 時間指定なし';
-  const yearNote = d.getFullYear() !== today.getFullYear() ? `${d.getFullYear()}年・` : '';
   const diffText = diff === 0 ? '今日' : diff === 1 ? '明日' : diff > 1 ? `今日から ${diff} 日後` : `今日より ${Math.abs(diff)} 日前`;
-  document.getElementById('pcDiff').textContent = yearNote + diffText;
+  document.getElementById('pcDiff').textContent = diffText;
 
   const warns = [];
   if (diff < 0) warns.push('⚠ 過去の日付です');
   if (d.getDay() === 0 || d.getDay() === 3) warns.push('⚠ 定休日（水曜・日曜）にあたります');
   if (diff > 90) warns.push('⚠ 3か月以上先の日付です');
-  const pending = OCR_FIELD_IDS.filter(id => document.getElementById(id).classList.contains('ocr-warn'));
-  if (pending.length > 0) warns.push('⚠ 写真読み取りの「要確認」（オレンジの枠）がまだ残っています');
   const warnEl = document.getElementById('pcWarn');
   warnEl.textContent = warns.join('\n');
   warnEl.style.display = warns.length > 0 ? 'block' : 'none';
 
+  const repairText = v.repairContent || SLIP_PHOTO_REPAIR_TEXT;
   document.getElementById('pcDetail').innerHTML =
-    `<div class="pc-name">${esc(v.customerName)} 様</div><div class="pc-repair">${esc(v.repairContent)}</div>`;
+    `<div class="pc-name">${esc(v.customerName)} 様</div><div class="pc-repair">${esc(repairText)}</div>` +
+    (v.hasPhoto ? `<div class="pc-repair">📷 伝票の写真も一緒に保存します</div>` : '');
   document.getElementById('pcOk').textContent = editId ? '✅ この出来上がり日で更新する' : '✅ この出来上がり日で登録する';
   document.getElementById('pickupConfirm').classList.add('active');
 }
@@ -1954,12 +2191,15 @@ function confirmSaveOrder() {
   const pickupTime = document.getElementById('f-time').value;
   const customerName = document.getElementById('f-name').value.trim();
   const phone = document.getElementById('f-phone').value.trim();
-  const repairContent = document.getElementById('f-repair').value.trim();
   const startDate = document.getElementById('f-start-date').value;
   const vendorId = document.getElementById('f-vendor').value;
 
   const id = editId || newId();
   const existing = orders.find(o => o.id === id);
+  const photo = pendingSlipPhoto;
+  pendingSlipPhoto = null;   // 同じ写真を次の受付に持ち越さない
+  const hasPhoto = !!photo || !!(existing && existing.hasPhoto);
+  const repairContent = document.getElementById('f-repair').value.trim() || (hasPhoto ? SLIP_PHOTO_REPAIR_TEXT : '');
 
   const order = {
     id,
@@ -1972,12 +2212,19 @@ function confirmSaveOrder() {
     startDate,
     vendorId,
     status: existing ? (document.getElementById('f-status').value || existing.status) : '受付中',
+    hasPhoto,
+    photoFileId: (existing && existing.photoFileId) || null,
     createdAt: existing ? existing.createdAt : new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
 
+  const wasEdit = !!editId;
   fbSaveOrder(order);
-  showToast(editId ? '✅ 更新しました' : '✅ 受付登録しました');
+  if (photo) {
+    // 写真だけ保存できなかった時は、写真なしの記録に戻す
+    attachPhotoToOrder(id, photo, { name: customerName, date: pickupDate }, !!(existing && existing.hasPhoto));
+  }
+  showToast(wasEdit ? '✅ 更新しました' : '✅ 受付登録しました');
   editId = null;
   goto('dashboard');
 }
@@ -2027,6 +2274,45 @@ function removeVendor(id) {
 // ══════════════════════════════
 function initSettings() {
   document.getElementById('s-apikey').value = localStorage.getItem('momose_claude_key') || '';
+  document.getElementById('s-photo-url').value = photoStoreUrl;
+  renderPhotoStoreStatus();
+}
+
+function renderPhotoStoreStatus(text, color) {
+  const el = document.getElementById('s-photo-status');
+  if (!el) return;
+  if (text) { el.textContent = text; el.style.color = color || 'var(--muted)'; return; }
+  el.textContent = photoStoreUrl ? '保存先：Googleドライブ' : '保存先：Firebase（Googleドライブは未設定）';
+  el.style.color = photoStoreUrl ? 'var(--green)' : 'var(--muted)';
+}
+
+async function savePhotoStoreUrl() {
+  const url = document.getElementById('s-photo-url').value.trim();
+  if (url && !/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(url)) {
+    renderPhotoStoreStatus('⚠ URLの形が違います。「https://script.google.com/macros/s/…/exec」の形で貼り付けてください', 'var(--red)');
+    return;
+  }
+  const before = photoStoreUrl;
+  photoStoreUrl = url;
+  if (url) {
+    renderPhotoStoreStatus('接続テスト中...', 'var(--muted)');
+    try {
+      const r = await callPhotoStore({ action: 'ping' }, 30000);
+      renderPhotoStoreStatus(`✅ 接続OK（保存先フォルダ：${r.folder}）`, 'var(--green)');
+    } catch(e) {
+      photoStoreUrl = before;
+      renderPhotoStoreStatus('⚠ 接続できませんでした：' + e.message, 'var(--red)');
+      return;
+    }
+  }
+  try {
+    await window.fsSetDoc(window.fsDoc(window.db, 'config', 'photoStore'), { url, updatedAt: new Date().toISOString() });
+    showToast(url ? '✅ 写真の保存先をGoogleドライブにしました' : '✅ 写真の保存先をFirebaseに戻しました');
+    if (!url) renderPhotoStoreStatus();
+  } catch(e) {
+    photoStoreUrl = before;
+    renderPhotoStoreStatus('⚠ 設定を保存できませんでした：' + e.message, 'var(--red)');
+  }
 }
 
 function saveApiKey() {
@@ -2126,6 +2412,7 @@ function clearOcrMark(id) {
 }
 
 function clearOcrReview() {
+  pendingSlipPhoto = null;
   OCR_FIELD_IDS.forEach(clearOcrMark);
   const panel = document.getElementById('ocrReview');
   if (panel) panel.style.display = 'none';
@@ -2252,8 +2539,7 @@ function buildOcrPrompt(base) {
 
 // 上から順に試す。先頭が使えない場合だけ次に進む
 const OCR_MODELS = [
-  { id: 'claude-fable-5-2', label: 'Fable 5.2（最高精度）', max_tokens: 8000, extra: { output_config: { effort: 'medium' } } },
-  { id: 'claude-sonnet-5-5', label: 'Sonnet 5.5（予備）', max_tokens: 8000, extra: { output_config: { effort: 'medium' } } },
+  { id: 'claude-sonnet-5-5', label: 'Sonnet 5.5', max_tokens: 8000, extra: { output_config: { effort: 'medium' } } },
   { id: 'claude-sonnet-5', label: 'Sonnet 5（予備）', max_tokens: 2048, extra: {} },
   { id: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5（予備・精度低め）', max_tokens: 2048, extra: {} }
 ];
@@ -2316,70 +2602,25 @@ function extractOcrResult(data) {
 }
 
 // ── 伝票読み取り：結果をフォームに入れる ──
-function applyOcrResult(r, photoSrc, base) {
-  clearOcrReview();
-  const uncertain = Array.isArray(r.uncertain) ? r.uncertain : [];
-  const reason = r.uncertainReason ? `（${r.uncertainReason}）` : '';
-  const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
-
+function applyOcrResult(r, base) {
   // 出来上がり日
-  const raw = r.pickupDateText ? `伝票の記載「${r.pickupDateText}」` : '';
   const pickup = resolvePickupDate(r.pickupMonth, r.pickupDay, base);
-  if (pickup) {
-    document.getElementById('f-date').value = localDateStr(pickup);
-    const label = `${pickup.getFullYear()}年${pickup.getMonth() + 1}月${pickup.getDate()}日（${weekdays[pickup.getDay()]}）`;
-    const today = new Date(base.getFullYear(), base.getMonth(), base.getDate());
-    const problems = [];
-    if (r.pickupWeekday && weekdays.includes(r.pickupWeekday) && r.pickupWeekday !== weekdays[pickup.getDay()]) {
-      problems.push(`伝票の曜日は「${r.pickupWeekday}」ですが、この日付は「${weekdays[pickup.getDay()]}」曜日です`);
-    }
-    if (pickup.getDay() === 0 || pickup.getDay() === 3) problems.push('定休日（水曜・日曜）にあたります');
-    if (pickup < today) problems.push('過去の日付です');
-    if (uncertain.includes('pickupDate')) problems.push('AIが読み取りに自信なし' + reason);
-    if (problems.length > 0) {
-      setOcrMark('f-date', 'warn', `⚠ ${label}　${raw}　→ ${problems.join('／')}。伝票を見て確認してください。`);
-    } else {
-      setOcrMark('f-date', 'filled', `${label}　${raw}`);
-    }
-  } else {
-    document.getElementById('f-date').value = '';
-    setOcrMark('f-date', 'warn', `⚠ 出来上がり日を読み取れませんでした。${raw}　伝票を見て入力してください。`);
-  }
+  document.getElementById('f-date').value = pickup ? localDateStr(pickup) : '';
 
-  // 納品時間
+  // 納品時間（9時〜18時のときだけ入れる）
   const hour = parseInt(r.pickupHour, 10);
-  if (hour >= 9 && hour <= 18) {
-    document.getElementById('f-time').value = `${hour}:00`;
-    setOcrMark('f-time', uncertain.includes('pickupTime') ? 'warn' : 'filled',
-      uncertain.includes('pickupTime') ? '⚠ AIが読み取りに自信なし' + reason + '。伝票を見て確認してください。' : '');
-  } else if (!isNaN(hour)) {
-    setOcrMark('f-time', 'warn', `⚠ 伝票の時刻「${hour}時」は選択肢（9時〜18時）にありません。選び直してください。`);
-  }
+  if (hour >= 9 && hour <= 18) document.getElementById('f-time').value = `${hour}:00`;
 
   // お客様名・電話番号・修理内容
-  const textFields = [
-    { id: 'f-name', key: 'customerName', value: r.customerName, label: 'お客様名', required: true },
-    { id: 'f-phone', key: 'phone', value: r.phone, label: '電話番号', required: false },
-    { id: 'f-repair', key: 'repairContent', value: r.repairContent, label: '修理内容', required: true }
-  ];
-  textFields.forEach(f => {
-    const value = (f.value === null || f.value === undefined) ? '' : String(f.value).trim();
-    document.getElementById(f.id).value = value;
-    if (!value) {
-      if (f.required) setOcrMark(f.id, 'warn', `⚠ ${f.label}を読み取れませんでした。伝票を見て入力してください。`);
-      return;
-    }
-    if (uncertain.includes(f.key) || value.includes('？') || value.includes('?')) {
-      setOcrMark(f.id, 'warn', '⚠ AIが読み取りに自信なし' + reason + '。伝票を見て確認してください。');
-    } else {
-      setOcrMark(f.id, 'filled', '');
-    }
-  });
+  const put = (id, v) => { document.getElementById(id).value = (v === null || v === undefined) ? '' : String(v).trim(); };
+  put('f-name', r.customerName);
+  put('f-phone', r.phone);
+  put('f-repair', r.repairContent);
+}
 
-  // 伝票の写真を残して見比べられるようにする
-  document.getElementById('ocrPhoto').src = photoSrc;
+function showSlipPreview(photo) {
+  document.getElementById('ocrPhoto').src = photo;
   document.getElementById('ocrReview').style.display = 'block';
-  updateOcrSummary();
 }
 
 async function handleOcrImage(event) {
@@ -2399,21 +2640,31 @@ async function handleOcrImage(event) {
       return;
     }
 
+    // 読み取りの成否にかかわらず、伝票の写真は登録と一緒に保存する
+    try {
+      pendingSlipPhoto = await makeSlipPhoto(e.target.result);
+    } catch (photoErr) {
+      pendingSlipPhoto = null;
+    }
+
     try {
       const base64 = await compressImage(e.target.result);
       const base = new Date();
-      const { result, label } = await callOcrApi(CLAUDE_API_KEY, base64, base);
-      applyOcrResult(result, 'data:image/jpeg;base64,' + base64, base);
-      document.getElementById('ocrModelNote').textContent = '読み取りAI：' + label;
+      const { result } = await callOcrApi(CLAUDE_API_KEY, base64, base);
+      applyOcrResult(result, base);
+      if (pendingSlipPhoto) showSlipPreview(pendingSlipPhoto);
 
       closeOcrModal();
-      const hasWarn = OCR_FIELD_IDS.some(id => document.getElementById(id).classList.contains('ocr-warn'));
-      showToast(hasWarn ? '⚠ 読み取り完了。オレンジの項目を確認してください' : '✅ 読み取り完了！金色の項目を伝票と見比べてください', hasWarn ? 'warn' : 'ok');
+      showToast('✅ 読み取り完了');
 
     } catch(err) {
-      document.getElementById('ocr-upload-area').style.display = 'block';
-      document.getElementById('ocr-loading').style.display = 'none';
-      showToast('⚠ 読み取りエラー: ' + err.message, 'err');
+      closeOcrModal();
+      if (pendingSlipPhoto) {
+        showSlipPreview(pendingSlipPhoto);
+        showToast('⚠ 読み取りできませんでした。写真を見て名前と日付を入力してください', 'err');
+      } else {
+        showToast('⚠ 読み取りエラー: ' + err.message, 'err');
+      }
     }
   };
   reader.readAsDataURL(file);
